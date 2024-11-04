@@ -1,0 +1,7 @@
+
+services:
+  tile38:
+    image: "tile38/tile38"
+    container_name: tile38-tileorm-test
+    ports:
+      - "9852:9851"
