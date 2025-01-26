@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "tileorm"
-version = "0.1.0"
+version = "0.1.1"
 description = "An ORM for Tile38 inspired by Peewee - with Pydantic validation"
 authors = ["Alex Ward <alxwrd@googlemail.com>"]
 license = "MIT"
@@ -8,7 +8,7 @@ readme = "README.md"
 
 [tool.poetry.dependencies]
 python = "^3.12"
-pyle38 = "^0.13.0"
+pyle38 = "^0.14.2"
 pydantic = "^2.9.2"
 
 
