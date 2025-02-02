@@ -61,9 +61,9 @@ async def test_create(tile38: Tile38):
 
     await Truck.create(id=1, group="foo", location=(0.0, 0.0), field="bar")
 
-    assert await tile38.exists("truck:foo", 1)
+    assert await tile38.exists("truck:group=foo", 1)
 
-    truck = await tile38.get("truck:foo", 1).withfields().asObject()
+    truck = await tile38.get("truck:group=foo", 1).withfields().asObject()
     assert truck.object["coordinates"] == [0.0, 0.0]
     assert truck.fields["field"] == "bar"
 
@@ -81,9 +81,9 @@ async def test_create_with_null_value(tile38: Tile38):
 
     await Truck.create(id=1, group="foo", location=(0.0, 0.0), field=None)
 
-    assert await tile38.exists("truck:foo", 1)
+    assert await tile38.exists("truck:group=foo", 1)
 
-    truck = await tile38.get("truck:foo", 1).withfields().asObject()
+    truck = await tile38.get("truck:group=foo", 1).withfields().asObject()
     assert truck.object["coordinates"] == [0.0, 0.0]
     assert truck.fields["field"] is None
 
@@ -100,9 +100,9 @@ async def test_create_with_point(tile38: Tile38):
 
     await Truck.create(id=1, group="foo", location=Point(0.0, 0.0), field=None)
 
-    assert await tile38.exists("truck:foo", 1)
+    assert await tile38.exists("truck:group=foo", 1)
 
-    truck = await tile38.get("truck:foo", 1).withfields().asObject()
+    truck = await tile38.get("truck:group=foo", 1).withfields().asObject()
     assert truck.object["coordinates"] == [0.0, 0.0]
 
 
@@ -118,9 +118,9 @@ async def test_create_with_hash(tile38: Tile38):
 
     await Truck.create(id=1, group="foo", location="gcpvn231e", field="bar")
 
-    assert await tile38.exists("truck:foo", 1)
+    assert await tile38.exists("truck:group=foo", 1)
 
-    truck = await tile38.get("truck:foo", 1).withfields().asObject()
+    truck = await tile38.get("truck:group=foo", 1).withfields().asObject()
     assert truck.object["coordinates"] == pytest.approx(
         [-0.075381, 51.505558], rel=1e-3
     )
@@ -138,9 +138,9 @@ async def test_create_with_bounds(tile38: Tile38):
 
     await Truck.create(id=1, group="foo", location=(0.0, 0.0, 0.0, 0.0), field="bar")
 
-    assert await tile38.exists("truck:foo", 1)
+    assert await tile38.exists("truck:group=foo", 1)
 
-    truck = await tile38.get("truck:foo", 1).withfields().asObject()
+    truck = await tile38.get("truck:group=foo", 1).withfields().asObject()
     assert truck.object["coordinates"] == [[[0, 0], [0, 0], [0, 0], [0, 0], [0, 0]]]
 
 
@@ -157,7 +157,7 @@ async def test_create_with_json(tile38: Tile38):
 
     await Truck.create(id=1, group="foo", location=Point(0.0, 0.0), field=[{"test": 1}])
 
-    truck = await tile38.get("truck:foo", 1).withfields().asObject()
+    truck = await tile38.get("truck:group=foo", 1).withfields().asObject()
     assert truck.object["field"] == [{"test": 1}]
 
 

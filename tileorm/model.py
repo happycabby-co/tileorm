@@ -105,7 +105,7 @@ class Model(BaseModel):
         return (
             f"{cls.__name__.lower()}"
             f"{':' if groups else ''}"
-            f"{':'.join([str(groups.get(group)) for group in sorted(groups)])}"
+            f"{':'.join([f"{group}={groups.get(group)}" for group in sorted(groups)])}"
         )
 
     @property
