@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "tileorm"
-version = "0.1.2"
+version = "0.1.3"
 description = "An ORM for Tile38 inspired by Peewee - with Pydantic validation"
 authors = ["Alex Ward <alxwrd@googlemail.com>"]
 license = "MIT"
