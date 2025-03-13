@@ -101,18 +101,27 @@ class Model(BaseModel):
         return cls.fields_of_type(cls, JsonField)
 
     @classmethod
-    def __make_key(cls, **groups: str) -> str:
+    def _make_key(cls, **groups: str) -> str:
         return (
             f"{cls.__name__.lower()}"
             f"{':' if groups else ''}"
             f"{':'.join([f"{group}={groups.get(group)}" for group in sorted(groups)])}"
         )
 
+    @classmethod
+    def _make_groups(cls, key: str) -> dict[str, str]:
+        return {
+            group: key.split(":")[i + 1].split("=")[1]
+            for i, group in enumerate(cls.__groups)
+        }
+
     @property
     def _key(self) -> str:
-        return self.__make_key(
-            **{group: getattr(self, group) for group in self.__groups}
-        )
+        return self._make_key(**self._groups)
+
+    @property
+    def _groups(self) -> dict[str, str]:
+        return {group: getattr(self, group) for group in self.__groups}
 
     @property
     def _identifier(self):
@@ -164,7 +173,7 @@ class Model(BaseModel):
         try:
             return (
                 await cls.Meta.database.follower().exists(
-                    cls.__make_key(**groups),
+                    cls._make_key(**groups),
                     identifier,
                 )
             ).exists
@@ -181,8 +190,7 @@ class Model(BaseModel):
         identifier: str,
         **groups: str,
     ) -> Tile38ModelType:
-        key = cls.__make_key(**groups)
-
+        key = cls._make_key(**groups)
         try:
             result = (
                 await cls.Meta.database.get(key, identifier).withfields().asObject()
@@ -214,3 +222,11 @@ class Model(BaseModel):
         for group, value in groups.items():
             obj[group] = value
         return cls.model_validate(obj)
+
+    @classmethod
+    async def get_by_key(
+        cls: Type[Tile38ModelType],
+        identifier: str,
+        key: str,
+    ) -> Tile38ModelType:
+        return await cls.get(identifier, **cls._make_groups(key))
