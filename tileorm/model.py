@@ -191,10 +191,14 @@ class Model(BaseModel):
         **groups: str,
     ) -> Tile38ModelType:
         key = cls._make_key(**groups)
+        query = cls.Meta.database.get(key, identifier).withfields()
+        
         try:
-            result = (
-                await cls.Meta.database.get(key, identifier).withfields().asObject()
-            )
+            match cls.model_fields[cls.__location]:
+                case GeoHashField():
+                    result = await query.asHash(9)  # Use precision matching common geohash length
+                case _:
+                    result = await query.asObject()
         except pyle38.errors.Tile38KeyNotFoundError:
             raise exceptions.NotFoundError(name=cls.__name__, key=key, id=identifier)
 
@@ -217,7 +221,10 @@ class Model(BaseModel):
             case _:
                 raise NotImplementedError
 
-        obj.update(**(result.fields or {}), **(result.object or {}))
+        obj.update(
+            **(result.fields or {}),
+            **getattr(result, "object", {}),
+        )
 
         for group, value in groups.items():
             obj[group] = value
