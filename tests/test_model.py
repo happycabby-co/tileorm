@@ -309,31 +309,29 @@ async def test_nearby_with_str_input(TruckModel, tile38: Tile38):
     """Test nearby method with str (object_id) input type."""
     # Create a reference truck
     reference_truck = await TruckModel.create(
-        id=10, group="fleet2", location=Point(0.0, 0.0), name="reference"
+        id=1, group="fleet2", location=Point(0.0, 0.0), name="reference"
     )
 
     # Create other trucks at various distances
     await TruckModel.create(
-        id=11, group="fleet2", location=Point(0.001, 0.001), name="nearby1"
+        id=2, group="fleet2", location=Point(0.001, 0.001), name="nearby1"
     )
     await TruckModel.create(
-        id=12, group="fleet2", location=Point(1.0, 1.0), name="far1"
+        id=3, group="fleet2", location=Point(1.0, 1.0), name="far1"
     )
     await TruckModel.create(
-        id=13, group="fleet2", location=Point(0.002, 0.002), name="nearby2"
+        id=4, group="fleet2", location=Point(0.002, 0.002), name="nearby2"
     )
 
     # Query nearby using reference truck's ID as string
+    # Tile38 includes the reference object (distance 0) in NEARBY results.
     results = []
-    async for truck in TruckModel.nearby("10", radius=1000.0, group="fleet2"):
+    async for truck in TruckModel.nearby("1", radius=1000.0, group="fleet2"):
         results.append(truck)
 
-    # Should return trucks 11 and 13 (within 1km of truck 10)
-    # Note: truck 10 itself may or may not be included depending on Tile38 behavior
-    assert len(results) >= 2
+    assert len(results) == 3
     truck_ids = {truck.id for truck in results}
-    assert 11 in truck_ids
-    assert 13 in truck_ids
+    assert truck_ids == {1, 2, 4}
 
 
 @pytest.mark.asyncio
@@ -341,30 +339,28 @@ async def test_nearby_with_model_input(TruckModel, tile38: Tile38):
     """Test nearby method with Model instance input type."""
     # Create a reference truck instance
     reference_truck = await TruckModel.create(
-        id=20, group="fleet3", location=Point(0.0, 0.0), name="reference"
+        id=1, group="fleet3", location=Point(0.0, 0.0), name="reference"
     )
 
     # Create other trucks at various distances
     await TruckModel.create(
-        id=21, group="fleet3", location=Point(0.001, 0.001), name="nearby1"
+        id=2, group="fleet3", location=Point(0.001, 0.001), name="nearby1"
     )
     await TruckModel.create(
-        id=22, group="fleet3", location=Point(1.0, 1.0), name="far1"
+        id=3, group="fleet3", location=Point(1.0, 1.0), name="far1"
     )
     await TruckModel.create(
-        id=23, group="fleet3", location=Point(0.002, 0.002), name="nearby2"
+        id=4, group="fleet3", location=Point(0.002, 0.002), name="nearby2"
     )
 
-    # Query nearby using Model instance
+    # Query nearby using Model instance (Tile38 includes reference object in results).
     results = []
     async for truck in TruckModel.nearby(reference_truck, radius=1000.0, group="fleet3"):
         results.append(truck)
 
-    # Should return trucks 21 and 23 (within 1km of truck 20)
-    assert len(results) >= 2
+    assert len(results) == 3
     truck_ids = {truck.id for truck in results}
-    assert 21 in truck_ids
-    assert 23 in truck_ids
+    assert truck_ids == {1, 2, 4}
 
 
 @pytest.mark.asyncio
@@ -389,65 +385,67 @@ async def test_nearby_edge_cases(TruckModel, tile38: Tile38):
 
     # Edge case 4: Radius filtering - create trucks and test different radii
     await TruckModel.create(
-        id=30, group="fleet6", location=Point(0.0, 0.0), name="center"
+        id=1, group="fleet6", location=Point(0.0, 0.0), name="center"
     )
     await TruckModel.create(
-        id=31, group="fleet6", location=Point(0.001, 0.001), name="close"
+        id=2, group="fleet6", location=Point(0.001, 0.001), name="close"
     )
     await TruckModel.create(
-        id=32, group="fleet6", location=Point(0.01, 0.01), name="medium"
+        id=3, group="fleet6", location=Point(0.01, 0.01), name="medium"
     )
     await TruckModel.create(
-        id=33, group="fleet6", location=Point(1.0, 1.0), name="far"
+        id=4, group="fleet6", location=Point(1.0, 1.0), name="far"
     )
 
-    # Very small radius (100m) - should get only truck 30 (at center point)
-    # Truck 31 is at 0.001, 0.001 which is ~111m away, outside 100m radius
+    # Very small radius (100m) - should get only truck 1 (at center point)
+    # Truck 2 is at 0.001, 0.001 which is ~111m away, outside 100m radius
     results = []
     async for truck in TruckModel.nearby(Point(0.0, 0.0), radius=100.0, group="fleet6"):
         results.append(truck)
-    assert len(results) >= 1
+    assert len(results) == 1
     truck_ids = {truck.id for truck in results}
-    assert 30 in truck_ids  # Center truck should be included
+    assert truck_ids == {1}
 
-    # Medium radius (1km) - should get trucks 30 and 31
-    # Truck 32 is at 0.01, 0.01 which is ~1.11km away, outside 1km radius
+    # Medium radius (1km) - should get trucks 1 and 2
+    # Truck 3 is at 0.01, 0.01 which is ~1.11km away, outside 1km radius
     results = []
     async for truck in TruckModel.nearby(Point(0.0, 0.0), radius=1000.0, group="fleet6"):
         results.append(truck)
-    assert len(results) >= 2
+    assert len(results) == 2
     truck_ids = {truck.id for truck in results}
-    assert 30 in truck_ids  # Center truck
-    assert 31 in truck_ids  # Close truck (~111m away)
+    assert truck_ids == {1, 2}
 
     # Large radius (200km) - should get all trucks
     results = []
     async for truck in TruckModel.nearby(Point(0.0, 0.0), radius=200000.0, group="fleet6"):
         results.append(truck)
-    assert len(results) >= 3
+    assert len(results) == 4
+    truck_ids = {truck.id for truck in results}
+    assert truck_ids == {1, 2, 3, 4}
 
     # Edge case 5: Group filtering - trucks in different groups
     await TruckModel.create(
-        id=40, group="fleet7", location=Point(0.0, 0.0), name="fleet7_truck"
+        id=1, group="fleet7", location=Point(0.0, 0.0), name="fleet7_truck"
     )
     await TruckModel.create(
-        id=41, group="fleet8", location=Point(0.001, 0.001), name="fleet8_truck"
+        id=1, group="fleet8", location=Point(0.001, 0.001), name="fleet8_truck"
     )
 
-    # Query fleet7 - should only get truck 40
-    # Use larger radius to ensure truck 40 is included (it's at center point)
+    # Query fleet7 - should only get truck 1
     results = []
     async for truck in TruckModel.nearby(Point(0.0, 0.0), radius=1000.0, group="fleet7"):
         results.append(truck)
+    assert len(results) == 1
     truck_ids = {truck.id for truck in results}
-    assert 40 in truck_ids
-    assert 41 not in truck_ids  # Truck 41 is in fleet8, not fleet7
+    assert truck_ids == {1}
+    assert not any(t.group == "fleet8" for t in results)  # fleet8 truck not in fleet7
 
-    # Query fleet8 - should only get truck 41
-    # Truck 41 is at 0.001, 0.001 which is ~111m away, so use 200m radius
+    # Query fleet8 - should only get truck 1 (in fleet8)
+    # Truck is at 0.001, 0.001 which is ~111m away, so use 200m radius
     results = []
     async for truck in TruckModel.nearby(Point(0.0, 0.0), radius=200.0, group="fleet8"):
         results.append(truck)
+    assert len(results) == 1
     truck_ids = {truck.id for truck in results}
-    assert 41 in truck_ids
-    assert 40 not in truck_ids  # Truck 40 is in fleet7, not fleet8
+    assert truck_ids == {1}
+    assert not any(t.group == "fleet7" for t in results)  # fleet7 truck not in fleet8
