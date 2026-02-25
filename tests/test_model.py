@@ -253,11 +253,14 @@ async def test_get_not_found(tile38: Tile38):
 @pytest_asyncio.fixture
 async def TruckModel(tile38: Tile38):
     """Fixture that provides a Truck model class with database configured."""
+
     class Truck(Model):
         id: int = Identifier()
         group: str = Group()
         location: Point = PointField()
-        name: str | None = CharField(default=None)  # Make optional for now until field parsing is fixed
+        name: str | None = CharField(
+            default=None
+        )  # Make optional for now until field parsing is fixed
 
         class Meta:
             database = tile38
@@ -286,7 +289,9 @@ async def test_nearby_with_point_input(TruckModel, tile38: Tile38):
     # Query nearby using Point - small radius (should only get trucks 1 and 3)
     # Note: 0.001 degrees ≈ 111 meters, so 1km radius should catch trucks at 0.001, 0.001
     results = []
-    async for truck in TruckModel.nearby(Point(0.0, 0.0), radius=1000.0, group="fleet1"):
+    async for truck in TruckModel.nearby(
+        Point(0.0, 0.0), radius=1000.0, group="fleet1"
+    ):
         results.append(truck)
 
     # Should return trucks 1 and 3 (within 1km)
@@ -296,7 +301,9 @@ async def test_nearby_with_point_input(TruckModel, tile38: Tile38):
 
     # Query with larger radius (should get all trucks)
     results = []
-    async for truck in TruckModel.nearby(Point(0.0, 0.0), radius=200000.0, group="fleet1"):
+    async for truck in TruckModel.nearby(
+        Point(0.0, 0.0), radius=200000.0, group="fleet1"
+    ):
         results.append(truck)
 
     assert len(results) == 3
@@ -316,9 +323,7 @@ async def test_nearby_with_str_input(TruckModel, tile38: Tile38):
     await TruckModel.create(
         id=2, group="fleet2", location=Point(0.001, 0.001), name="nearby1"
     )
-    await TruckModel.create(
-        id=3, group="fleet2", location=Point(1.0, 1.0), name="far1"
-    )
+    await TruckModel.create(id=3, group="fleet2", location=Point(1.0, 1.0), name="far1")
     await TruckModel.create(
         id=4, group="fleet2", location=Point(0.002, 0.002), name="nearby2"
     )
@@ -346,16 +351,16 @@ async def test_nearby_with_model_input(TruckModel, tile38: Tile38):
     await TruckModel.create(
         id=2, group="fleet3", location=Point(0.001, 0.001), name="nearby1"
     )
-    await TruckModel.create(
-        id=3, group="fleet3", location=Point(1.0, 1.0), name="far1"
-    )
+    await TruckModel.create(id=3, group="fleet3", location=Point(1.0, 1.0), name="far1")
     await TruckModel.create(
         id=4, group="fleet3", location=Point(0.002, 0.002), name="nearby2"
     )
 
     # Query nearby using Model instance (Tile38 includes reference object in results).
     results = []
-    async for truck in TruckModel.nearby(reference_truck, radius=1000.0, group="fleet3"):
+    async for truck in TruckModel.nearby(
+        reference_truck, radius=1000.0, group="fleet3"
+    ):
         results.append(truck)
 
     assert len(results) == 3
@@ -368,7 +373,9 @@ async def test_nearby_edge_cases(TruckModel, tile38: Tile38):
     """Test edge cases for nearby method."""
     # Edge case 1: Empty results when key doesn't exist
     results = []
-    async for truck in TruckModel.nearby(Point(0.0, 0.0), radius=1000.0, group="nonexistent"):
+    async for truck in TruckModel.nearby(
+        Point(0.0, 0.0), radius=1000.0, group="nonexistent"
+    ):
         results.append(truck)
     assert len(results) == 0
 
@@ -379,7 +386,10 @@ async def test_nearby_edge_cases(TruckModel, tile38: Tile38):
     assert len(results) == 0
 
     # Edge case 3: Invalid target type should raise TypeError
-    with pytest.raises(TypeError, match="target must be a Point, str \\(object_id\\), or Model instance"):
+    with pytest.raises(
+        TypeError,
+        match="target must be a Point, str \\(object_id\\), or Model instance",
+    ):
         async for truck in TruckModel.nearby(123, radius=1000.0, group="fleet5"):
             pass
 
@@ -393,9 +403,7 @@ async def test_nearby_edge_cases(TruckModel, tile38: Tile38):
     await TruckModel.create(
         id=3, group="fleet6", location=Point(0.01, 0.01), name="medium"
     )
-    await TruckModel.create(
-        id=4, group="fleet6", location=Point(1.0, 1.0), name="far"
-    )
+    await TruckModel.create(id=4, group="fleet6", location=Point(1.0, 1.0), name="far")
 
     # Very small radius (100m) - should get only truck 1 (at center point)
     # Truck 2 is at 0.001, 0.001 which is ~111m away, outside 100m radius
@@ -409,7 +417,9 @@ async def test_nearby_edge_cases(TruckModel, tile38: Tile38):
     # Medium radius (1km) - should get trucks 1 and 2
     # Truck 3 is at 0.01, 0.01 which is ~1.11km away, outside 1km radius
     results = []
-    async for truck in TruckModel.nearby(Point(0.0, 0.0), radius=1000.0, group="fleet6"):
+    async for truck in TruckModel.nearby(
+        Point(0.0, 0.0), radius=1000.0, group="fleet6"
+    ):
         results.append(truck)
     assert len(results) == 2
     truck_ids = {truck.id for truck in results}
@@ -417,7 +427,9 @@ async def test_nearby_edge_cases(TruckModel, tile38: Tile38):
 
     # Large radius (200km) - should get all trucks
     results = []
-    async for truck in TruckModel.nearby(Point(0.0, 0.0), radius=200000.0, group="fleet6"):
+    async for truck in TruckModel.nearby(
+        Point(0.0, 0.0), radius=200000.0, group="fleet6"
+    ):
         results.append(truck)
     assert len(results) == 4
     truck_ids = {truck.id for truck in results}
@@ -433,7 +445,9 @@ async def test_nearby_edge_cases(TruckModel, tile38: Tile38):
 
     # Query fleet7 - should only get truck 1
     results = []
-    async for truck in TruckModel.nearby(Point(0.0, 0.0), radius=1000.0, group="fleet7"):
+    async for truck in TruckModel.nearby(
+        Point(0.0, 0.0), radius=1000.0, group="fleet7"
+    ):
         results.append(truck)
     assert len(results) == 1
     truck_ids = {truck.id for truck in results}
