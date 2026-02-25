@@ -1,24 +1,37 @@
-[tool.poetry]
+[project]
 name = "tileorm"
 version = "0.1.3"
 description = "An ORM for Tile38 inspired by Peewee - with Pydantic validation"
-authors = ["Alex Ward <alxwrd@googlemail.com>"]
-license = "MIT"
+authors = [{ name = "Alex Ward", email = "alxwrd@googlemail.com" }]
+requires-python = ">=3.12,<4"
 readme = "README.md"
+license = "MIT"
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
+]
+dependencies = [
+    "pyle38>=0.14.2,<0.15",
+    "pydantic>=2.9.2,<3",
+]
 
-[tool.poetry.dependencies]
-python = "^3.12"
-pyle38 = "^0.14.2"
-pydantic = "^2.9.2"
+[dependency-groups]
+dev = [
+    "ruff>=0.7.1,<0.8",
+    "isort>=5.13.2,<6",
+    "pytest>=8.3.3,<9",
+    "pytest-cov>=6.0.0,<7",
+    "pytest-asyncio>=0.24.0,<0.25",
+]
 
+[tool.uv]
+default-groups = "all"
 
-[tool.poetry.group.dev.dependencies]
-ruff = "^0.7.1"
-isort = "^5.13.2"
-pytest = "^8.3.3"
-pytest-cov = "^6.0.0"
-pytest-asyncio = "^0.24.0"
+[tool.uv.build-backend]
+module-root = ""
 
 [build-system]
-requires = ["poetry-core"]
-build-backend = "poetry.core.masonry.api"
+requires = ["uv_build>=0.10.0,<0.11.0"]
+build-backend = "uv_build"
