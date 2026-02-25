@@ -136,8 +136,8 @@ profile_default/
 ipython_config.py
 
 
-# poetry
-poetry.lock
+# uv
+uv.lock
 
 # pdm
 .pdm.toml
