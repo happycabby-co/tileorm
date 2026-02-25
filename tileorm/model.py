@@ -2,11 +2,13 @@ from typing import (
     Any,
     AsyncIterator,
     ClassVar,
+    Dict,
     Iterable,
+    Optional,
     overload,
+    Protocol,
     Type,
     TypeVar,
-    TypedDict,
     Union,
 )
 
@@ -39,12 +41,11 @@ from tileorm.types import Bounds, Point
 Tile38ModelType = TypeVar("Tile38ModelType", bound="Model")
 
 
-class ObjectResponse(TypedDict):
-    """Shape of a Tile38 object response (get asObject() or item in asObjects().objects)."""
+class ObjectResponse(Protocol):
+    """Protocol for a Tile38 object response (e.g. query.asObject() result or item in asObjects().objects)."""
 
-    id: str
     object: dict
-    fields: dict | None
+    fields: Optional[Dict[str, Any]]
 
 
 def _coordinates_to_geohash(coords: list[float], precision: int = 9) -> str:
@@ -221,34 +222,48 @@ class Model(BaseModel):
     def from_pyle(
         cls: Type[Tile38ModelType],
         response: ObjectResponse,
+        *,
+        id_override: str | None = None,
         **groups: str,
     ) -> Tile38ModelType:
-        obj = {cls.__identifier: response["id"]}
+        """Build a model instance from a pyle38 object response (e.g. query.asObject() or item in asObjects().objects).
+        For GET, the single-object response does not include an id attribute, so pass id_override.
+        """
+        identifier = (
+            id_override if id_override is not None else getattr(response, "id", None)
+        )
+        if identifier is None:
+            raise ValueError(
+                "response must have an id attribute or id_override must be passed"
+            )
+        geo = response.object
+
+        obj = {cls.__identifier: identifier}
 
         match cls.model_fields[cls.__location]:
             case PointField():
                 obj[cls.__location] = Point(
-                    response["object"]["coordinates"][1],
-                    response["object"]["coordinates"][0],
+                    geo["coordinates"][1],
+                    geo["coordinates"][0],
                 )
             case GeoHashField():
                 obj[cls.__location] = _coordinates_to_geohash(
-                    response["object"]["coordinates"], precision=9
+                    geo["coordinates"], precision=9
                 )
             case BoundsField():
                 obj[cls.__location] = Bounds(
-                    response["object"]["coordinates"][0][0][1],
-                    response["object"]["coordinates"][0][0][0],
-                    response["object"]["coordinates"][0][2][1],
-                    response["object"]["coordinates"][0][2][0],
+                    geo["coordinates"][0][0][1],
+                    geo["coordinates"][0][0][0],
+                    geo["coordinates"][0][2][1],
+                    geo["coordinates"][0][2][0],
                 )
             case _:
                 raise NotImplementedError
 
-        fields = response.get("fields")
+        fields = getattr(response, "fields", None)
         if isinstance(fields, dict):
             obj.update(fields)
-        obj.update(**(response.get("object") or {}))
+        obj.update(**(geo or {}))
 
         for group, value in groups.items():
             obj[group] = value
@@ -268,12 +283,7 @@ class Model(BaseModel):
         except pyle38.errors.Tile38KeyNotFoundError:
             raise exceptions.NotFoundError(name=cls.__name__, key=key, id=identifier)
 
-        response: ObjectResponse = {
-            "id": identifier,
-            "object": result.object,
-            "fields": getattr(result, "fields", None),
-        }
-        return cls.from_pyle(response, **groups)
+        return cls.from_pyle(result, id_override=identifier, **groups)
 
     @classmethod
     async def get_by_key(
@@ -368,9 +378,4 @@ class Model(BaseModel):
             return
 
         for item in result.objects:
-            response: ObjectResponse = {
-                "id": item.id,
-                "object": item.object,
-                "fields": item.fields if isinstance(getattr(item, "fields", None), dict) else None,
-            }
-            yield cls.from_pyle(response, **groups)
+            yield cls.from_pyle(item, **groups)
