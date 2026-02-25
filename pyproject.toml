@@ -13,17 +13,18 @@ classifiers = [
     "Programming Language :: Python :: 3.14",
 ]
 dependencies = [
-    "pyle38>=0.14.2,<0.15",
-    "pydantic>=2.9.2,<3",
+    "pyle38~=0.14.2",
+    "pydantic~=2.10.5",
+    "pygeohash~=3.2.2",
 ]
 
 [dependency-groups]
 dev = [
-    "ruff>=0.7.1,<0.8",
-    "isort>=5.13.2,<6",
-    "pytest>=8.3.3,<9",
-    "pytest-cov>=6.0.0,<7",
-    "pytest-asyncio>=0.24.0,<0.25",
+    "ruff~=0.7.1",
+    "isort~=5.13.2",
+    "pytest~=8.3.3",
+    "pytest-cov~=6.0.0",
+    "pytest-asyncio~=0.24.0",
 ]
 
 [tool.uv]
@@ -33,5 +34,5 @@ default-groups = "all"
 module-root = ""
 
 [build-system]
-requires = ["uv_build>=0.10.0,<0.11.0"]
+requires = ["uv_build~=0.10.0"]
 build-backend = "uv_build"

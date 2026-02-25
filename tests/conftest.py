@@ -12,11 +12,14 @@ TILE38_READY_TIMEOUT = 15.0
 TILE38_READY_POLL_INTERVAL = 0.2
 
 
-def _wait_for_tile38(url: str = TILE38_URL, timeout: float = TILE38_READY_TIMEOUT) -> None:
+def _wait_for_tile38(
+    url: str = TILE38_URL, timeout: float = TILE38_READY_TIMEOUT
+) -> None:
     """Poll until Tile38 accepts connections and responds to PING."""
     deadline = time.monotonic() + timeout
     while time.monotonic() < deadline:
         try:
+
             async def check():
                 client = Tile38(url)
                 await client.ping()
