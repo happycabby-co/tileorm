@@ -51,6 +51,7 @@ class Model(BaseModel):
     __groups: ClassVar[list[str]]
     __fields: ClassVar[list[str]]
     __json: ClassVar[list[str]]
+    _read_db: ClassVar[Tile38]
 
     @staticmethod
     def fields_of_type(obj: "Type[Model]", field_types: list[type]) -> list[str]:
@@ -114,6 +115,14 @@ class Model(BaseModel):
             for i, group in enumerate(cls.__groups)
         }
 
+    @classproperty
+    def _read_db(cls) -> Tile38:
+        """Return the database client to use for reads: follower if available, else main."""
+        try:
+            return cls.Meta.database.follower()
+        except errors.Tile38Error:
+            return cls.Meta.database
+
     @property
     def _key(self) -> str:
         return self._make_key(**self._groups)
@@ -171,7 +180,7 @@ class Model(BaseModel):
     ) -> bool:
         try:
             return (
-                await cls.Meta.database.follower().exists(
+                await cls._read_db.exists(
                     cls._make_key(**groups),
                     identifier,
                 )
@@ -190,7 +199,7 @@ class Model(BaseModel):
         **groups: str,
     ) -> Tile38ModelType:
         key = cls._make_key(**groups)
-        query = cls.Meta.database.get(key, identifier).withfields()
+        query = cls._read_db.get(key, identifier).withfields()
         
         try:
             match cls.model_fields[cls.__location]:
@@ -272,13 +281,7 @@ class Model(BaseModel):
         **groups: str,
     ) -> AsyncIterator[Tile38ModelType]:
         key = cls._make_key(**groups)
-        
-        # Try to use follower if available, otherwise use database directly
-        try:
-            db = cls.Meta.database.follower()
-        except pyle38.errors.Tile38Error:
-            db = cls.Meta.database
-        
+        db = cls._read_db
         query = db.nearby(key)
 
         # Determine if target is a Point, object_id (str), or Model instance
