@@ -1,6 +1,6 @@
 # 🌐 TileORM
 
-[![Build](https://github.com/alxwrd/tileorm/actions/workflows/build.yaml/badge.svg)](https://github.com/alxwrd/tileorm/actions/workflows/deploy.yaml)
+[![Tests](https://github.com/alxwrd/tileorm/actions/workflows/test.yml/badge.svg)](https://github.com/alxwrd/tileorm/actions/workflows/test.yml)
 
 > [!WARNING]
 > Not advisable for production critical workflows
