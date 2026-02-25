@@ -245,7 +245,7 @@ class Model(BaseModel):
 
         obj.update(
             **(result.fields or {}),
-            **(getattr(result, "object", {}) or {}),
+            **(result.object or {}),
         )
 
         for group, value in groups.items():
