@@ -2,8 +2,11 @@ from typing import (
     Any,
     AsyncIterator,
     ClassVar,
+    Dict,
     Iterable,
+    Optional,
     overload,
+    Protocol,
     Type,
     TypeVar,
     Union,
@@ -36,6 +39,13 @@ from tileorm.fields import (
 from tileorm.types import Bounds, Point
 
 Tile38ModelType = TypeVar("Tile38ModelType", bound="Model")
+
+
+class ObjectResponse(Protocol):
+    """Protocol for a Tile38 object response (e.g. query.asObject() result or item in asObjects().objects)."""
+
+    object: dict
+    fields: Optional[Dict[str, Any]]
 
 
 def _coordinates_to_geohash(coords: list[float], precision: int = 9) -> str:
@@ -209,6 +219,57 @@ class Model(BaseModel):
         return await cls(**kwargs).save()
 
     @classmethod
+    def from_pyle(
+        cls: Type[Tile38ModelType],
+        response: ObjectResponse,
+        *,
+        id_override: str | None = None,
+        **groups: str,
+    ) -> Tile38ModelType:
+        """Build a model instance from a pyle38 object response (e.g. query.asObject() or item in asObjects().objects).
+        For GET, the single-object response does not include an id attribute, so pass id_override.
+        """
+        identifier = (
+            id_override if id_override is not None else getattr(response, "id", None)
+        )
+        if identifier is None:
+            raise ValueError(
+                "response must have an id attribute or id_override must be passed"
+            )
+        geo = response.object
+
+        obj = {cls.__identifier: identifier}
+
+        match cls.model_fields[cls.__location]:
+            case PointField():
+                obj[cls.__location] = Point(
+                    geo["coordinates"][1],
+                    geo["coordinates"][0],
+                )
+            case GeoHashField():
+                obj[cls.__location] = _coordinates_to_geohash(
+                    geo["coordinates"], precision=9
+                )
+            case BoundsField():
+                obj[cls.__location] = Bounds(
+                    geo["coordinates"][0][0][1],
+                    geo["coordinates"][0][0][0],
+                    geo["coordinates"][0][2][1],
+                    geo["coordinates"][0][2][0],
+                )
+            case _:
+                raise NotImplementedError
+
+        fields = getattr(response, "fields", None)
+        if isinstance(fields, dict):
+            obj.update(fields)
+        obj.update(**(geo or {}))
+
+        for group, value in groups.items():
+            obj[group] = value
+        return cls.model_validate(obj)
+
+    @classmethod
     async def get(
         cls: Type[Tile38ModelType],
         identifier: str,
@@ -222,35 +283,7 @@ class Model(BaseModel):
         except pyle38.errors.Tile38KeyNotFoundError:
             raise exceptions.NotFoundError(name=cls.__name__, key=key, id=identifier)
 
-        obj = {cls.__identifier: identifier}
-
-        match cls.model_fields[cls.__location]:
-            case PointField():
-                obj[cls.__location] = Point(
-                    result.object["coordinates"][1], result.object["coordinates"][0]
-                )
-            case GeoHashField():
-                obj[cls.__location] = _coordinates_to_geohash(
-                    result.object["coordinates"], precision=9
-                )
-            case BoundsField():
-                obj[cls.__location] = Bounds(
-                    result.object["coordinates"][0][0][1],
-                    result.object["coordinates"][0][0][0],
-                    result.object["coordinates"][0][2][1],
-                    result.object["coordinates"][0][2][0],
-                )
-            case _:
-                raise NotImplementedError
-
-        obj.update(
-            **(result.fields or {}),
-            **(result.object or {}),
-        )
-
-        for group, value in groups.items():
-            obj[group] = value
-        return cls.model_validate(obj)
+        return cls.from_pyle(result, id_override=identifier, **groups)
 
     @classmethod
     async def get_by_key(
@@ -344,43 +377,5 @@ class Model(BaseModel):
             # Return empty iterator if reference object doesn't exist
             return
 
-        # Parse each object in the collection
         for item in result.objects:
-            obj = {cls.__identifier: item.id}
-
-            # Parse location based on field type
-            match cls.model_fields[cls.__location]:
-                case PointField():
-                    obj[cls.__location] = Point(
-                        item.object["coordinates"][1], item.object["coordinates"][0]
-                    )
-                case GeoHashField():
-                    obj[cls.__location] = _coordinates_to_geohash(
-                        item.object["coordinates"], precision=9
-                    )
-                case BoundsField():
-                    obj[cls.__location] = Bounds(
-                        item.object["coordinates"][0][0][1],
-                        item.object["coordinates"][0][0][0],
-                        item.object["coordinates"][0][2][1],
-                        item.object["coordinates"][0][2][0],
-                    )
-                case _:
-                    raise NotImplementedError
-
-            # Add fields - in pyle38, item.fields should be a dict when fields exist
-            # Check both item.fields and result.fields structure
-            # Based on pyle38 docs, fields are returned as dict in objects
-            if hasattr(item, "fields"):
-                if isinstance(item.fields, dict):
-                    obj.update(item.fields)
-                elif isinstance(item.fields, list):
-                    # If fields is a list of names, we might need to fetch values differently
-                    # For now, skip fields if they're not in dict format
-                    pass
-
-            # Add group values
-            for group, value in groups.items():
-                obj[group] = value
-
-            yield cls.model_validate(obj)
+            yield cls.from_pyle(item, **groups)
