@@ -1,20 +1,19 @@
 import pytest
 import pytest_asyncio
-
 from pyle38 import Tile38
 
-from tileorm.model import Model
-from tileorm.types import Bounds, Point
+from tileorm import exceptions
 from tileorm.fields import (
     BoundsField,
-    GeoHashField,
-    Identifier,
-    Group,
     CharField,
+    GeoHashField,
+    Group,
+    Identifier,
     JsonField,
     PointField,
 )
-from tileorm import exceptions
+from tileorm.model import Model
+from tileorm.types import Bounds, Point
 
 
 def test_must_have_identifier():
@@ -314,7 +313,7 @@ async def test_nearby_with_point_input(TruckModel, tile38: Tile38):
 async def test_nearby_with_str_input(TruckModel, tile38: Tile38):
     """Test nearby method with str (object_id) input type."""
     # Create a reference truck
-    reference_truck = await TruckModel.create(
+    await TruckModel.create(
         id=1, group="fleet2", location=Point(0.0, 0.0), name="reference"
     )
 

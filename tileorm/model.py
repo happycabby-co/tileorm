@@ -4,20 +4,18 @@ from typing import (
     Any,
     AsyncIterator,
     ClassVar,
-    overload,
     Protocol,
     Self,
     TypeVar,
+    overload,
 )
 
 import pygeohash
 from pydantic import BaseModel
 from pydantic_core import to_json
-
 from pyle38 import Tile38
-from pyle38.errors import Tile38Error, Tile38KeyNotFoundError, Tile38IdNotFoundError
+from pyle38.errors import Tile38Error, Tile38IdNotFoundError, Tile38KeyNotFoundError
 from pyle38.follower import Follower
-
 
 from tileorm import exceptions
 from tileorm.exceptions import (
@@ -34,8 +32,8 @@ from tileorm.fields import (
     Identifier,
     JsonField,
     PointField,
-    _Location,
     Tile38FieldInfo,
+    _Location,
 )
 from tileorm.types import Bounds, Point
 
