@@ -18,6 +18,12 @@ jobs:
         uses: astral-sh/setup-uv@v7
       - name: Install dependencies
         run: uv sync
+      - name: Run type check
+        run: uv run ty check
+      - name: Run ruff check
+        run: uv run ruff check
+      - name: Run ruff format check
+        run: uv run ruff format --check
       - name: Start Tile38
         run: docker compose up -d
       - name: Wait for Tile38

@@ -1,10 +1,10 @@
 import asyncio
 import subprocess
 import time
-import pytest
 
-from pyle38 import Tile38
+import pytest
 import pytest_asyncio
+from pyle38 import Tile38
 
 # Port 9852 to avoid clashing with a local Tile38 on default 9851
 TILE38_URL = "redis://localhost:9852"

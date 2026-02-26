@@ -1,27 +1,26 @@
 import pytest
 import pytest_asyncio
-
 from pyle38 import Tile38
 
-from tileorm.model import Model
-from tileorm.types import Bounds, Point
+from tileorm import exceptions
 from tileorm.fields import (
     BoundsField,
-    GeoHashField,
-    Identifier,
-    Group,
     CharField,
+    GeoHashField,
+    Group,
+    Identifier,
     JsonField,
     PointField,
 )
-from tileorm import exceptions
+from tileorm.model import Model
+from tileorm.types import Bounds, Point
 
 
 def test_must_have_identifier():
     class Truck(Model):
-        location: tuple[float, float] = PointField()
-        group: str = Group()
-        field: str = CharField()
+        location: tuple[float, float] = PointField()  # type: ignore[assignment]
+        group: str = Group()  # type: ignore[assignment]
+        field: str = CharField()  # type: ignore[assignment]
 
     with pytest.raises(exceptions.NoIdentifier):
         Truck(
@@ -33,16 +32,15 @@ def test_must_have_identifier():
 
 def test_multiple_identifiers_not_allowed():
     class Truck(Model):
-        id: int = Identifier()
-        id2: int = Identifier()
-        group: str = Group()
-        field: str = CharField()
+        id: int = Identifier()  # type: ignore[assignment]
+        id2: int = Identifier()  # type: ignore[assignment]
+        group: str = Group()  # type: ignore[assignment]
+        field: str = CharField()  # type: ignore[assignment]
 
     with pytest.raises(exceptions.MultipleIdentifiers):
         Truck(
             id=1,
             id2=2,
-            location=(0.0, 0.0),
             group="foo",
             field="bar",
         )
@@ -51,76 +49,76 @@ def test_multiple_identifiers_not_allowed():
 @pytest.mark.asyncio
 async def test_create(tile38: Tile38):
     class Truck(Model):
-        id: int = Identifier()
-        group: str = Group()
-        location: Point = PointField()
-        field: str = CharField()
+        id: int = Identifier()  # type: ignore[assignment]
+        group: str = Group()  # type: ignore[assignment]
+        location: Point = PointField()  # type: ignore[assignment]
+        field: str = CharField()  # type: ignore[assignment]
 
         class Meta:
             database = tile38
 
     await Truck.create(id=1, group="foo", location=(0.0, 0.0), field="bar")
 
-    assert await tile38.exists("truck:group=foo", 1)
+    assert await tile38.exists("truck:group=foo", "1")
 
-    truck = await tile38.get("truck:group=foo", 1).withfields().asObject()
+    truck = await tile38.get("truck:group=foo", "1").withfields().asObject()
     assert truck.object["coordinates"] == [0.0, 0.0]
-    assert truck.fields["field"] == "bar"
+    assert truck.fields is not None and truck.fields["field"] == "bar"
 
 
 @pytest.mark.asyncio
 async def test_create_with_null_value(tile38: Tile38):
     class Truck(Model):
-        id: int = Identifier()
-        group: str = Group()
-        location: Point = PointField()
-        field: str | None = CharField()
+        id: int = Identifier()  # type: ignore[assignment]
+        group: str = Group()  # type: ignore[assignment]
+        location: Point = PointField()  # type: ignore[assignment]
+        field: str | None = CharField()  # type: ignore[assignment]
 
         class Meta:
             database = tile38
 
     await Truck.create(id=1, group="foo", location=(0.0, 0.0), field=None)
 
-    assert await tile38.exists("truck:group=foo", 1)
+    assert await tile38.exists("truck:group=foo", "1")
 
-    truck = await tile38.get("truck:group=foo", 1).withfields().asObject()
+    truck = await tile38.get("truck:group=foo", "1").withfields().asObject()
     assert truck.object["coordinates"] == [0.0, 0.0]
-    assert truck.fields["field"] is None
+    assert truck.fields is not None and truck.fields["field"] is None
 
 
 @pytest.mark.asyncio
 async def test_create_with_point(tile38: Tile38):
     class Truck(Model):
-        id: int = Identifier()
-        group: str = Group()
-        location: Point = PointField()
+        id: int = Identifier()  # type: ignore[assignment]
+        group: str = Group()  # type: ignore[assignment]
+        location: Point = PointField()  # type: ignore[assignment]
 
         class Meta:
             database = tile38
 
     await Truck.create(id=1, group="foo", location=Point(0.0, 0.0), field=None)
 
-    assert await tile38.exists("truck:group=foo", 1)
+    assert await tile38.exists("truck:group=foo", "1")
 
-    truck = await tile38.get("truck:group=foo", 1).withfields().asObject()
+    truck = await tile38.get("truck:group=foo", "1").withfields().asObject()
     assert truck.object["coordinates"] == [0.0, 0.0]
 
 
 @pytest.mark.asyncio
 async def test_create_with_hash(tile38: Tile38):
     class Truck(Model):
-        id: int = Identifier()
-        group: str = Group()
-        location: str = GeoHashField()
+        id: int = Identifier()  # type: ignore[assignment]
+        group: str = Group()  # type: ignore[assignment]
+        location: str = GeoHashField()  # type: ignore[assignment]
 
         class Meta:
             database = tile38
 
     await Truck.create(id=1, group="foo", location="gcpvn231e", field="bar")
 
-    assert await tile38.exists("truck:group=foo", 1)
+    assert await tile38.exists("truck:group=foo", "1")
 
-    truck = await tile38.get("truck:group=foo", 1).withfields().asObject()
+    truck = await tile38.get("truck:group=foo", "1").withfields().asObject()
     assert truck.object["coordinates"] == pytest.approx(
         [-0.075381, 51.505558], rel=1e-3
     )
@@ -129,44 +127,44 @@ async def test_create_with_hash(tile38: Tile38):
 @pytest.mark.asyncio
 async def test_create_with_bounds(tile38: Tile38):
     class Truck(Model):
-        id: int = Identifier()
-        group: str = Group()
-        location: Bounds = BoundsField()
+        id: int = Identifier()  # type: ignore[assignment]
+        group: str = Group()  # type: ignore[assignment]
+        location: Bounds = BoundsField()  # type: ignore[assignment]
 
         class Meta:
             database = tile38
 
     await Truck.create(id=1, group="foo", location=(0.0, 0.0, 0.0, 0.0), field="bar")
 
-    assert await tile38.exists("truck:group=foo", 1)
+    assert await tile38.exists("truck:group=foo", "1")
 
-    truck = await tile38.get("truck:group=foo", 1).withfields().asObject()
+    truck = await tile38.get("truck:group=foo", "1").withfields().asObject()
     assert truck.object["coordinates"] == [[[0, 0], [0, 0], [0, 0], [0, 0], [0, 0]]]
 
 
 @pytest.mark.asyncio
 async def test_create_with_json(tile38: Tile38):
     class Truck(Model):
-        id: int = Identifier()
-        group: str = Group()
-        location: Point = PointField()
-        field: list[dict[str, int]] = JsonField()
+        id: int = Identifier()  # type: ignore[assignment]
+        group: str = Group()  # type: ignore[assignment]
+        location: Point = PointField()  # type: ignore[assignment]
+        field: list[dict[str, int]] = JsonField()  # type: ignore[assignment]
 
         class Meta:
             database = tile38
 
     await Truck.create(id=1, group="foo", location=Point(0.0, 0.0), field=[{"test": 1}])
 
-    truck = await tile38.get("truck:group=foo", 1).withfields().asObject()
+    truck = await tile38.get("truck:group=foo", "1").withfields().asObject()
     assert truck.object["field"] == [{"test": 1}]
 
 
 @pytest.mark.asyncio
 async def test_get_with_point(tile38: Tile38):
     class Truck(Model):
-        id: int = Identifier()
-        group: str = Group()
-        location: Point = PointField()
+        id: int = Identifier()  # type: ignore[assignment]
+        group: str = Group()  # type: ignore[assignment]
+        location: Point = PointField()  # type: ignore[assignment]
 
         class Meta:
             database = tile38
@@ -183,9 +181,9 @@ async def test_get_with_point(tile38: Tile38):
 @pytest.mark.asyncio
 async def test_get_with_geohash(tile38: Tile38):
     class Truck(Model):
-        id: int = Identifier()
-        group: str = Group()
-        location: str = GeoHashField()
+        id: int = Identifier()  # type: ignore[assignment]
+        group: str = Group()  # type: ignore[assignment]
+        location: str = GeoHashField()  # type: ignore[assignment]
 
         class Meta:
             database = tile38
@@ -202,9 +200,9 @@ async def test_get_with_geohash(tile38: Tile38):
 @pytest.mark.asyncio
 async def test_get_with_bounds(tile38: Tile38):
     class Truck(Model):
-        id: int = Identifier()
-        group: str = Group()
-        location: Bounds = BoundsField()
+        id: int = Identifier()  # type: ignore[assignment]
+        group: str = Group()  # type: ignore[assignment]
+        location: Bounds = BoundsField()  # type: ignore[assignment]
 
         class Meta:
             database = tile38
@@ -221,10 +219,10 @@ async def test_get_with_bounds(tile38: Tile38):
 @pytest.mark.asyncio
 async def test_get_with_json(tile38: Tile38):
     class Truck(Model):
-        id: int = Identifier()
-        group: str = Group()
-        location: Point = PointField()
-        field: list[dict[str, int]] = JsonField()
+        id: int = Identifier()  # type: ignore[assignment]
+        group: str = Group()  # type: ignore[assignment]
+        location: Point = PointField()  # type: ignore[assignment]
+        field: list[dict[str, int]] = JsonField()  # type: ignore[assignment]
 
         class Meta:
             database = tile38
@@ -238,10 +236,10 @@ async def test_get_with_json(tile38: Tile38):
 @pytest.mark.asyncio
 async def test_get_not_found(tile38: Tile38):
     class Truck(Model):
-        id: int = Identifier()
-        group: str = Group()
-        location: Point = PointField()
-        field: str = CharField()
+        id: int = Identifier()  # type: ignore[assignment]
+        group: str = Group()  # type: ignore[assignment]
+        location: Point = PointField()  # type: ignore[assignment]
+        field: str = CharField()  # type: ignore[assignment]
 
         class Meta:
             database = tile38
@@ -255,10 +253,10 @@ async def TruckModel(tile38: Tile38):
     """Fixture that provides a Truck model class with database configured."""
 
     class Truck(Model):
-        id: int = Identifier()
-        group: str = Group()
-        location: Point = PointField()
-        name: str | None = CharField(
+        id: int = Identifier()  # type: ignore[assignment]
+        group: str = Group()  # type: ignore[assignment]
+        location: Point = PointField()  # type: ignore[assignment]
+        name: str | None = CharField(  # type: ignore[assignment]
             default=None
         )  # Make optional for now until field parsing is fixed
 
@@ -315,7 +313,7 @@ async def test_nearby_with_point_input(TruckModel, tile38: Tile38):
 async def test_nearby_with_str_input(TruckModel, tile38: Tile38):
     """Test nearby method with str (object_id) input type."""
     # Create a reference truck
-    reference_truck = await TruckModel.create(
+    await TruckModel.create(
         id=1, group="fleet2", location=Point(0.0, 0.0), name="reference"
     )
 
