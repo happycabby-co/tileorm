@@ -1,23 +1,23 @@
+from __future__ import annotations
+
 from typing import (
     Any,
     AsyncIterator,
     ClassVar,
-    Dict,
-    Iterable,
-    Optional,
     overload,
     Protocol,
-    Type,
+    Self,
     TypeVar,
-    Union,
 )
 
 import pygeohash
-import pyle38
-import pyle38.errors
 from pydantic import BaseModel
 from pydantic_core import to_json
-from pyle38 import Tile38, errors
+
+from pyle38 import Tile38
+from pyle38.errors import Tile38Error, Tile38KeyNotFoundError, Tile38IdNotFoundError
+from pyle38.follower import Follower
+
 
 from tileorm import exceptions
 from tileorm.exceptions import (
@@ -35,6 +35,7 @@ from tileorm.fields import (
     JsonField,
     PointField,
     _Location,
+    Tile38FieldInfo,
 )
 from tileorm.types import Bounds, Point
 
@@ -45,7 +46,7 @@ class ObjectResponse(Protocol):
     """Protocol for a Tile38 object response (e.g. query.asObject() result or item in asObjects().objects)."""
 
     object: dict
-    fields: Optional[Dict[str, Any]]
+    fields: dict[str, Any] | None
 
 
 def _coordinates_to_geohash(coords: list[float], precision: int = 9) -> str:
@@ -58,7 +59,7 @@ class Model(BaseModel):
     model_config = {"coerce_numbers_to_str": True}
 
     class Meta:
-        database: Tile38 = None
+        database: Tile38 | None = None
 
     def __init__(self, **data: Any) -> None:
         super().__init__(**data)
@@ -77,21 +78,20 @@ class Model(BaseModel):
     __groups: ClassVar[list[str]]
     __fields: ClassVar[list[str]]
     __json: ClassVar[list[str]]
-    _read_db: ClassVar[Tile38]
+    _read_db: ClassVar[Tile38 | Follower]
 
     @staticmethod
-    def fields_of_type(obj: "Type[Model]", field_types: list[type]) -> list[str]:
-        if not isinstance(field_types, Iterable):
-            field_types = [field_types]
-
+    def fields_of_type(
+        obj: type[Model], field_type: type[Tile38FieldInfo]
+    ) -> list[str]:
         return [
             name
             for name, field in obj.model_fields.items()
-            if any(isinstance(field, field_type) for field_type in field_types)
+            if isinstance(field, field_type)
         ]
 
     @classproperty
-    def __identifier(cls) -> str:
+    def __identifier(cls: type[Model]) -> str:
         fields = cls.fields_of_type(cls, Identifier)
 
         if not fields:
@@ -103,7 +103,7 @@ class Model(BaseModel):
         return fields[0]
 
     @classproperty
-    def __location(cls) -> str:
+    def __location(cls: type[Model]) -> str:
         fields = cls.fields_of_type(cls, _Location)
 
         if not fields:
@@ -115,15 +115,15 @@ class Model(BaseModel):
         return fields[0]
 
     @classproperty
-    def __groups(cls) -> list[str]:
+    def __groups(cls: type[Model]) -> list[str]:
         return cls.fields_of_type(cls, Group)
 
     @classproperty
-    def __fields(cls) -> list[str]:
+    def __fields(cls: type[Model]) -> list[str]:
         return cls.fields_of_type(cls, Data)
 
     @classproperty
-    def __json(cls) -> list[str]:
+    def __json(cls: type[Model]) -> list[str]:
         return cls.fields_of_type(cls, JsonField)
 
     @classmethod
@@ -142,12 +142,15 @@ class Model(BaseModel):
         }
 
     @classproperty
-    def _read_db(cls) -> Tile38:
+    def _read_db(cls: type[Model]) -> Tile38 | Follower:
         """Return the database client to use for reads: follower if available, else main."""
+        database = cls.Meta.database
+        if database is None:
+            raise RuntimeError("Model.Meta.database must be set")
         try:
-            return cls.Meta.database.follower()
-        except errors.Tile38Error:
-            return cls.Meta.database
+            return database.follower()
+        except Tile38Error:
+            return database
 
     @property
     def _key(self) -> str:
@@ -165,8 +168,11 @@ class Model(BaseModel):
     def _location(self):
         return getattr(self, self.__location)
 
-    async def save(self) -> None:
-        query = self.Meta.database.set(self._key, self._identifier)
+    async def save(self) -> Self:
+        database = self.Meta.database
+        if database is None:
+            raise RuntimeError("Model.Meta.database must be set")
+        query = database.set(self._key, self._identifier)
 
         match self.model_fields[self.__location]:
             case PointField():
@@ -189,7 +195,7 @@ class Model(BaseModel):
             return self
 
         for field in self.__json:
-            await self.Meta.database.jset(
+            await database.jset(
                 self._key,
                 self._identifier,
                 field,
@@ -200,7 +206,7 @@ class Model(BaseModel):
 
     @classmethod
     async def exists(
-        cls: Type[Tile38ModelType],
+        cls: type[Tile38ModelType],
         identifier: str,
         **groups: str,
     ) -> bool:
@@ -211,16 +217,18 @@ class Model(BaseModel):
                     identifier,
                 )
             ).exists
-        except errors.Tile38KeyNotFoundError:
+        except Tile38KeyNotFoundError:
             return False
 
     @classmethod
-    async def create(cls: Type[Tile38ModelType], **kwargs) -> Tile38ModelType:
-        return await cls(**kwargs).save()
+    async def create(cls: type[Tile38ModelType], **kwargs: Any) -> Tile38ModelType:
+        instance = cls(**kwargs)
+        await instance.save()
+        return instance
 
     @classmethod
     def from_pyle(
-        cls: Type[Tile38ModelType],
+        cls: type[Tile38ModelType],
         response: ObjectResponse,
         *,
         id_override: str | None = None,
@@ -271,23 +279,24 @@ class Model(BaseModel):
 
     @classmethod
     async def get(
-        cls: Type[Tile38ModelType],
-        identifier: str,
+        cls: type[Tile38ModelType],
+        identifier: str | int,
         **groups: str,
     ) -> Tile38ModelType:
+        id_str = str(identifier)
         key = cls._make_key(**groups)
-        query = cls._read_db.get(key, identifier).withfields()
+        query = cls._read_db.get(key, id_str).withfields()
 
         try:
             result = await query.asObject()
-        except pyle38.errors.Tile38KeyNotFoundError:
-            raise exceptions.NotFoundError(name=cls.__name__, key=key, id=identifier)
+        except Tile38KeyNotFoundError:
+            raise exceptions.NotFoundError(name=cls.__name__, key=key, id=id_str)
 
-        return cls.from_pyle(result, id_override=identifier, **groups)
+        return cls.from_pyle(result, id_override=id_str, **groups)
 
     @classmethod
     async def get_by_key(
-        cls: Type[Tile38ModelType],
+        cls: type[Tile38ModelType],
         identifier: str,
         key: str,
     ) -> Tile38ModelType:
@@ -296,7 +305,7 @@ class Model(BaseModel):
     @overload
     @classmethod
     async def nearby(
-        cls: Type[Tile38ModelType],
+        cls: type[Tile38ModelType],
         point: Point,
         radius: float = 1000.0,
         **groups: str,
@@ -305,7 +314,7 @@ class Model(BaseModel):
     @overload
     @classmethod
     async def nearby(
-        cls: Type[Tile38ModelType],
+        cls: type[Tile38ModelType],
         object_id: str,
         radius: float = 1000.0,
         **groups: str,
@@ -314,16 +323,16 @@ class Model(BaseModel):
     @overload
     @classmethod
     async def nearby(
-        cls: Type[Tile38ModelType],
-        model: "Model",
+        cls: type[Tile38ModelType],
+        model: Model,
         radius: float = 1000.0,
         **groups: str,
     ) -> AsyncIterator[Tile38ModelType]: ...
 
     @classmethod
     async def nearby(
-        cls: Type[Tile38ModelType],
-        target: Union[Point, str, "Model"],
+        cls: type[Tile38ModelType],
+        target: Point | str | Model,
         radius: float = 1000.0,
         **groups: str,
     ) -> AsyncIterator[Tile38ModelType]:
@@ -370,10 +379,10 @@ class Model(BaseModel):
 
         try:
             result = await query.asObjects()
-        except pyle38.errors.Tile38KeyNotFoundError:
+        except Tile38KeyNotFoundError:
             # Return empty iterator if key doesn't exist
             return
-        except pyle38.errors.Tile38ObjectNotFoundError:
+        except Tile38IdNotFoundError:
             # Return empty iterator if reference object doesn't exist
             return
 
