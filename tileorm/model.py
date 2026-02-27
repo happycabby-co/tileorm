@@ -53,6 +53,23 @@ def _coordinates_to_geohash(coords: list[float], precision: int = 9) -> str:
     return pygeohash.encode(lat, lon, precision=precision)
 
 
+def _build_where_expr(filters: dict[str, Any]) -> str:
+    """Build a Tile38 WHERE expression for equality on the given field=value pairs."""
+    parts = []
+    for field, value in filters.items():
+        if value is None:
+            literal = "null"
+        elif isinstance(value, bool):
+            literal = "true" if value else "false"
+        elif isinstance(value, (int, float)):
+            literal = str(value)
+        else:
+            s = str(value).replace("\\", "\\\\").replace("'", "\\'")
+            literal = f"'{s}'"
+        parts.append(f"{field} === {literal}")
+    return " && ".join(parts)
+
+
 class Model(BaseModel):
     model_config = {"coerce_numbers_to_str": True}
 
@@ -269,6 +286,13 @@ class Model(BaseModel):
         fields = getattr(response, "fields", None)
         if isinstance(fields, dict):
             obj.update(fields)
+        elif (
+            isinstance(fields, list)
+            and cls.__fields
+            and len(fields) == len(cls.__fields)
+        ):
+            # SCAN returns fields as ordered list of values; map to field names
+            obj.update(dict(zip(cls.__fields, fields)))
         obj.update(**(geo or {}))
 
         for group, value in groups.items():
@@ -382,6 +406,54 @@ class Model(BaseModel):
             return
         except Tile38IdNotFoundError:
             # Return empty iterator if reference object doesn't exist
+            return
+
+        for item in result.objects:
+            yield cls.from_pyle(item, **groups)
+
+    @classmethod
+    async def find(
+        cls: type[Tile38ModelType],
+        *,
+        limit: int | None = None,
+        cursor: int = 0,
+        **kwargs: Any,
+    ) -> AsyncIterator[Tile38ModelType]:
+        """Find objects in the collection that match the given filters.
+
+        Requires all group keys (e.g. group=...) to form the key. Optional
+        equality filters on Data fields are applied via Tile38 WHERE_EXPR.
+
+        Yields model instances. Use with: async for obj in Model.find(**groups, field=value).
+        """
+        # Split kwargs into groups (required for key) and filters (Data field equality)
+        groups = {k: kwargs[k] for k in cls.__groups if k in kwargs}
+        if len(groups) != len(cls.__groups):
+            missing = set(cls.__groups) - set(groups.keys())
+            raise TypeError(
+                f"find() missing required group argument(s): {sorted(missing)}"
+            )
+        filters = {k: kwargs[k] for k in cls.__fields if k in kwargs}
+        unknown = set(kwargs.keys()) - set(cls.__groups) - set(cls.__fields)
+        if unknown:
+            raise TypeError(
+                f"find() got unexpected keyword argument(s): {sorted(unknown)}"
+            )
+
+        key = cls._make_key(**groups)
+        query = cls._read_db.scan(key)
+
+        if limit is not None:
+            query = query.limit(limit)
+        if cursor != 0:
+            query = query.cursor(cursor)
+        if filters:
+            expr = _build_where_expr(filters)
+            query = query.where_expr(expr)
+
+        try:
+            result = await query.asObjects()
+        except Tile38KeyNotFoundError:
             return
 
         for item in result.objects:
