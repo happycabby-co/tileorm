@@ -53,6 +53,23 @@ def _coordinates_to_geohash(coords: list[float], precision: int = 9) -> str:
     return pygeohash.encode(lat, lon, precision=precision)
 
 
+def _build_where_expr(filters: dict[str, Any]) -> str:
+    """Build a Tile38 WHERE expression for equality on the given field=value pairs."""
+    parts = []
+    for field, value in filters.items():
+        if value is None:
+            literal = "null"
+        elif isinstance(value, bool):
+            literal = "true" if value else "false"
+        elif isinstance(value, (int, float)):
+            literal = str(value)
+        else:
+            s = str(value).replace("\\", "\\\\").replace("'", "\\'")
+            literal = f"'{s}'"
+        parts.append(f"{field} === {literal}")
+    return " && ".join(parts)
+
+
 class Model(BaseModel):
     model_config = {"coerce_numbers_to_str": True}
 
@@ -126,6 +143,14 @@ class Model(BaseModel):
 
     @classmethod
     def _make_key(cls, **groups: str) -> str:
+        """Make a Tile38 key for the given groups.
+
+        Groups are sorted alphabetically and joined with ":" and "=".
+
+        Example:
+        >>> Model._make_key(group1="value1", group2="value2")
+        "model:group1=value1:group2=value2"
+        """
         return (
             f"{cls.__name__.lower()}"
             f"{':' if groups else ''}"
@@ -134,10 +159,21 @@ class Model(BaseModel):
 
     @classmethod
     def _make_groups(cls, key: str) -> dict[str, str]:
-        return {
-            group: key.split(":")[i + 1].split("=")[1]
-            for i, group in enumerate(cls.__groups)
+        """Make a dictionary of groups from a Tile38 key.
+
+        Groups are extracted from the key and joined with ":" and "=".
+
+        Example:
+        >>> Model._make_groups("model:group1=value1:group2=value2")
+        {"group1": "value1", "group2": "value2"}
+        """
+        parts = key.split(":")
+
+        parsed = {
+            name: value for name, value in [part.split("=") for part in parts[1:]]
         }
+
+        return {group: parsed[group] for group in cls.__groups}
 
     @classproperty
     def _read_db(cls: type[Model]) -> Tile38 | Follower:
@@ -269,6 +305,13 @@ class Model(BaseModel):
         fields = getattr(response, "fields", None)
         if isinstance(fields, dict):
             obj.update(fields)
+        elif (
+            isinstance(fields, list)
+            and cls.__fields
+            and len(fields) == len(cls.__fields)
+        ):
+            # SCAN returns fields as ordered list of values; map to field names
+            obj.update(dict(zip(cls.__fields, fields)))
         obj.update(**(geo or {}))
 
         for group, value in groups.items():
@@ -386,3 +429,84 @@ class Model(BaseModel):
 
         for item in result.objects:
             yield cls.from_pyle(item, **groups)
+
+    @classmethod
+    async def find(
+        cls: type[Tile38ModelType],
+        *,
+        limit: int | None = None,
+        cursor: int = 0,
+        **kwargs: Any,
+    ) -> AsyncIterator[Tile38ModelType]:
+        """Find objects that match the given filters.
+
+        Groups (e.g. group=...) are optional. If omitted, all keys for this
+        model are scanned (e.g. all fleets). If provided, only that key is
+        queried. Optional equality filters on Data fields use Tile38 WHERE_EXPR.
+
+        Yields model instances. Use with: async for obj in Model.find() or
+        Model.find(group="fleet1", name="truck1").
+        """
+        # Split kwargs into groups (optional) and filters (Data field equality)
+        groups = {k: kwargs[k] for k in cls.__groups if k in kwargs}
+        if groups and len(groups) != len(cls.__groups):
+            missing = set(cls.__groups) - set(groups.keys())
+            raise TypeError(
+                f"find() missing required group argument(s): {sorted(missing)}"
+            )
+        filters = {k: kwargs[k] for k in cls.__fields if k in kwargs}
+        unknown = set(kwargs.keys()) - set(cls.__groups) - set(cls.__fields)
+        if unknown:
+            raise TypeError(
+                f"find() got unexpected keyword argument(s): {sorted(unknown)}"
+            )
+
+        db = cls._read_db
+        keys_to_scan: list[str]
+        if len(groups) == len(cls.__groups):
+            keys_to_scan = [cls._make_key(**groups)]
+        else:
+            # No (or partial) groups: scan all keys for this model
+            keys_response = await db.keys(f"{cls.__name__.lower()}*")
+            keys_to_scan = keys_response.keys or []
+
+        yielded = 0
+        for key in keys_to_scan:
+            key_groups = cls._make_groups(key)
+            query = db.scan(key)
+
+            if limit is not None:
+                if remaining := limit - yielded <= 0:
+                    return
+                query = query.limit(remaining)
+
+            if cursor != 0:
+                query = query.cursor(cursor)
+
+            if filters:
+                expr = _build_where_expr(filters)
+                query = query.where_expr(expr)
+
+            try:
+                result = await query.asObjects()
+            except Tile38KeyNotFoundError:
+                continue
+
+            for item in result.objects:
+                yield cls.from_pyle(item, **key_groups)
+                yielded += 1
+                if limit is not None and yielded >= limit:
+                    return
+            # Only apply cursor to the first key when scanning multiple keys
+            cursor = 0
+
+    @classmethod
+    async def find_all(
+        cls: type[Tile38ModelType],
+        *,
+        limit: int | None = None,
+        cursor: int = 0,
+        **kwargs: Any,
+    ) -> list[Tile38ModelType]:
+        """Return a list of all objects matching the find criteria by consuming the find iterator."""
+        return [obj async for obj in cls.find(limit=limit, cursor=cursor, **kwargs)]

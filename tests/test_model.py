@@ -461,3 +461,224 @@ async def test_nearby_edge_cases(TruckModel, tile38: Tile38):
     truck_ids = {truck.id for truck in results}
     assert truck_ids == {1}
     assert not any(t.group == "fleet7" for t in results)  # fleet7 truck not in fleet8
+
+
+@pytest.mark.asyncio
+async def test_find_all_in_key_no_filters(TruckModel):
+    """Find all objects in key when no filters are applied."""
+    await TruckModel.create(id=1, group="find1", location=Point(0.0, 0.0), name="a")
+    await TruckModel.create(id=2, group="find1", location=Point(0.0, 0.0), name="b")
+    await TruckModel.create(id=3, group="find1", location=Point(0.0, 0.0), name="c")
+
+    results = []
+    async for truck in TruckModel.find(group="find1"):
+        results.append(truck)
+
+    assert len(results) == 3
+    ids = {truck.id for truck in results}
+    assert ids == {1, 2, 3}
+    names = {truck.name for truck in results}
+    assert names == {"a", "b", "c"}
+
+
+@pytest.mark.asyncio
+async def test_find_without_groups_scans_all_keys(TruckModel):
+    """Find with no groups scans all keys for the model and yields all objects."""
+    await TruckModel.create(
+        id=1, group="find_all_a", location=Point(0.0, 0.0), name="x"
+    )
+    await TruckModel.create(
+        id=2, group="find_all_a", location=Point(0.0, 0.0), name="y"
+    )
+    await TruckModel.create(
+        id=1, group="find_all_b", location=Point(0.0, 0.0), name="z"
+    )
+
+    results = []
+    async for truck in TruckModel.find():
+        results.append(truck)
+
+    assert len(results) == 3
+    groups = {(t.group, t.id) for t in results}
+    assert groups == {("find_all_a", 1), ("find_all_a", 2), ("find_all_b", 1)}
+    names = {t.name for t in results}
+    assert names == {"x", "y", "z"}
+
+
+@pytest.mark.asyncio
+async def test_find_with_one_equality_filter(TruckModel):
+    """Find returns only objects matching the filter."""
+    await TruckModel.create(
+        id=1, group="find2", location=Point(0.0, 0.0), name="truck1"
+    )
+    await TruckModel.create(
+        id=2, group="find2", location=Point(0.0, 0.0), name="truck2"
+    )
+    await TruckModel.create(
+        id=3, group="find2", location=Point(0.0, 0.0), name="truck1"
+    )
+
+    results = []
+    async for truck in TruckModel.find(group="find2", name="truck1"):
+        results.append(truck)
+
+    assert len(results) == 2
+    truck_ids = {truck.id for truck in results}
+    assert truck_ids == {1, 3}
+    assert all(truck.name == "truck1" for truck in results)
+
+
+@pytest.mark.asyncio
+async def test_find_with_multiple_equality_filters(tile38: Tile38):
+    """Find with multiple filters returns objects matching all (AND)."""
+
+    class TruckWithStatus(Model):
+        id: int = Identifier()  # type: ignore[assignment]
+        group: str = Group()  # type: ignore[assignment]
+        location: Point = PointField()  # type: ignore[assignment]
+        name: str = CharField()  # type: ignore[assignment]
+        status: str = CharField()  # type: ignore[assignment]
+
+        class Meta:
+            database = tile38
+
+    await TruckWithStatus.create(
+        id=1, group="find3", location=Point(0.0, 0.0), name="a", status="active"
+    )
+    await TruckWithStatus.create(
+        id=2, group="find3", location=Point(0.0, 0.0), name="a", status="inactive"
+    )
+    await TruckWithStatus.create(
+        id=3, group="find3", location=Point(0.0, 0.0), name="b", status="active"
+    )
+
+    results = []
+    async for truck in TruckWithStatus.find(group="find3", name="a", status="active"):
+        results.append(truck)
+
+    assert len(results) == 1
+    assert results[0].id == 1
+    assert results[0].name == "a"
+    assert results[0].status == "active"
+
+
+@pytest.mark.asyncio
+async def test_find_empty_result_filter_matches_nothing(TruckModel):
+    """Find with filter that matches no objects yields empty iterator."""
+    await TruckModel.create(id=1, group="find4", location=Point(0.0, 0.0), name="only")
+
+    results = []
+    async for truck in TruckModel.find(group="find4", name="nonexistent"):
+        results.append(truck)
+
+    assert len(results) == 0
+
+
+@pytest.mark.asyncio
+async def test_find_empty_result_key_does_not_exist(TruckModel):
+    """Find on non-existent key yields empty iterator (no error)."""
+    results = []
+    async for truck in TruckModel.find(group="find_nonexistent_key"):
+        results.append(truck)
+
+    assert len(results) == 0
+
+
+@pytest.mark.asyncio
+async def test_find_limit(TruckModel):
+    """Find respects limit parameter."""
+    await TruckModel.create(id=1, group="find5", location=Point(0.0, 0.0), name="x")
+    await TruckModel.create(id=2, group="find5", location=Point(0.0, 0.0), name="x")
+    await TruckModel.create(id=3, group="find5", location=Point(0.0, 0.0), name="x")
+
+    results = []
+    async for truck in TruckModel.find(group="find5", limit=2):
+        results.append(truck)
+
+    assert len(results) == 2
+
+
+@pytest.mark.asyncio
+async def test_find_partial_groups_raises(tile38: Tile38):
+    """find() raises TypeError when some but not all group arguments are provided."""
+
+    class TruckTwoGroups(Model):
+        id: int = Identifier()  # type: ignore[assignment]
+        region: str = Group()  # type: ignore[assignment]
+        fleet: str = Group()  # type: ignore[assignment]
+        location: Point = PointField()  # type: ignore[assignment]
+        name: str = CharField()  # type: ignore[assignment]
+
+        class Meta:
+            database = tile38
+
+    with pytest.raises(TypeError, match="missing required group argument"):
+        async for _ in TruckTwoGroups.find(region="r1"):
+            pass
+
+
+@pytest.mark.asyncio
+async def test_find_no_groups_two_groups_non_alphabetical_order(tile38: Tile38):
+    """find() with no groups scans all keys; each yielded model's group fields match the stored key.
+
+    Model has two groups in non-alphabetical order (region, then fleet). Keys are built
+    with sorted group names (fleet, region). Parsing the key back must assign the correct
+    value to each group field.
+    """
+
+    class Vehicle(Model):
+        id: int = Identifier()  # type: ignore[assignment]
+        region: str = Group()  # type: ignore[assignment]
+        fleet: str = Group()  # type: ignore[assignment]
+        location: Point = PointField()  # type: ignore[assignment]
+        name: str = CharField()  # type: ignore[assignment]
+
+        class Meta:
+            database = tile38
+
+    created = [
+        ("us", "alpha"),
+        ("us", "beta"),
+        ("eu", "alpha"),
+    ]
+    for i, (region, fleet) in enumerate(created):
+        await Vehicle.create(
+            id=i + 1,
+            region=region,
+            fleet=fleet,
+            location=Point(0.0, 0.0),
+            name=f"{region}-{fleet}",
+        )
+
+    results = []
+    async for obj in Vehicle.find():
+        results.append(obj)
+
+    assert len(results) == 3
+    for obj in results:
+        # Each yielded model's region/fleet must match the key it was stored under
+        assert (obj.region, obj.fleet) in created
+        expected_key = Vehicle._make_key(region=obj.region, fleet=obj.fleet)
+        assert obj._key == expected_key
+
+
+@pytest.mark.asyncio
+async def test_find_unexpected_kwarg_raises(TruckModel):
+    """find() raises TypeError for unknown keyword argument."""
+    with pytest.raises(TypeError, match="unexpected keyword argument"):
+        async for _ in TruckModel.find(group="find6", unknown="x"):
+            pass
+
+
+@pytest.mark.asyncio
+async def test_find_all_matches_find_iterator(TruckModel):
+    """find_all() returns the same results as consuming the find() iterator."""
+    await TruckModel.create(id=1, group="cmp", location=Point(0.0, 0.0), name="a")
+    await TruckModel.create(id=2, group="cmp", location=Point(0.0, 0.0), name="b")
+    await TruckModel.create(id=3, group="cmp", location=Point(0.0, 0.0), name="a")
+
+    from_iterator = [t async for t in TruckModel.find(group="cmp")]
+    from_find_all = await TruckModel.find_all(group="cmp")
+
+    assert len(from_iterator) == len(from_find_all) == 3
+    assert from_iterator == from_find_all
