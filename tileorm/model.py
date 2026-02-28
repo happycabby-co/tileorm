@@ -144,7 +144,7 @@ class Model(BaseModel):
     @classmethod
     def _make_key(cls, **groups: str) -> str:
         """Make a Tile38 key for the given groups.
-        
+
         Groups are sorted alphabetically and joined with ":" and "=".
 
         Example:
@@ -160,7 +160,7 @@ class Model(BaseModel):
     @classmethod
     def _make_groups(cls, key: str) -> dict[str, str]:
         """Make a dictionary of groups from a Tile38 key.
-        
+
         Groups are extracted from the key and joined with ":" and "=".
 
         Example:
