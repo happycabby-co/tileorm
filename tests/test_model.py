@@ -625,6 +625,7 @@ async def test_find_no_groups_two_groups_non_alphabetical_order(tile38: Tile38):
     with sorted group names (fleet, region). Parsing the key back must assign the correct
     value to each group field.
     """
+
     class Vehicle(Model):
         id: int = Identifier()  # type: ignore[assignment]
         region: str = Group()  # type: ignore[assignment]
