@@ -463,9 +463,6 @@ async def test_nearby_edge_cases(TruckModel, tile38: Tile38):
     assert not any(t.group == "fleet7" for t in results)  # fleet7 truck not in fleet8
 
 
-# --- find() tests ---
-
-
 @pytest.mark.asyncio
 async def test_find_all_in_key_no_filters(TruckModel):
     """Find all objects in key when no filters are applied."""
