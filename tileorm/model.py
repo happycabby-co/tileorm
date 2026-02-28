@@ -143,6 +143,14 @@ class Model(BaseModel):
 
     @classmethod
     def _make_key(cls, **groups: str) -> str:
+        """Make a Tile38 key for the given groups.
+        
+        Groups are sorted alphabetically and joined with ":" and "=".
+
+        Example:
+        >>> Model._make_key(group1="value1", group2="value2")
+        "model:group1=value1:group2=value2"
+        """
         return (
             f"{cls.__name__.lower()}"
             f"{':' if groups else ''}"
@@ -151,10 +159,21 @@ class Model(BaseModel):
 
     @classmethod
     def _make_groups(cls, key: str) -> dict[str, str]:
-        return {
-            group: key.split(":")[i + 1].split("=")[1]
-            for i, group in enumerate(cls.__groups)
+        """Make a dictionary of groups from a Tile38 key.
+        
+        Groups are extracted from the key and joined with ":" and "=".
+
+        Example:
+        >>> Model._make_groups("model:group1=value1:group2=value2")
+        {"group1": "value1", "group2": "value2"}
+        """
+        parts = key.split(":")
+
+        parsed = {
+            name: value for name, value in [part.split("=") for part in parts[1:]]
         }
+
+        return {group: parsed[group] for group in cls.__groups}
 
     @classproperty
     def _read_db(cls: type[Model]) -> Tile38 | Follower:
@@ -419,16 +438,18 @@ class Model(BaseModel):
         cursor: int = 0,
         **kwargs: Any,
     ) -> AsyncIterator[Tile38ModelType]:
-        """Find objects in the collection that match the given filters.
+        """Find objects that match the given filters.
 
-        Requires all group keys (e.g. group=...) to form the key. Optional
-        equality filters on Data fields are applied via Tile38 WHERE_EXPR.
+        Groups (e.g. group=...) are optional. If omitted, all keys for this
+        model are scanned (e.g. all fleets). If provided, only that key is
+        queried. Optional equality filters on Data fields use Tile38 WHERE_EXPR.
 
-        Yields model instances. Use with: async for obj in Model.find(**groups, field=value).
+        Yields model instances. Use with: async for obj in Model.find() or
+        Model.find(group="fleet1", name="truck1").
         """
-        # Split kwargs into groups (required for key) and filters (Data field equality)
+        # Split kwargs into groups (optional) and filters (Data field equality)
         groups = {k: kwargs[k] for k in cls.__groups if k in kwargs}
-        if len(groups) != len(cls.__groups):
+        if groups and len(groups) != len(cls.__groups):
             missing = set(cls.__groups) - set(groups.keys())
             raise TypeError(
                 f"find() missing required group argument(s): {sorted(missing)}"
@@ -440,21 +461,52 @@ class Model(BaseModel):
                 f"find() got unexpected keyword argument(s): {sorted(unknown)}"
             )
 
-        key = cls._make_key(**groups)
-        query = cls._read_db.scan(key)
+        db = cls._read_db
+        keys_to_scan: list[str]
+        if len(groups) == len(cls.__groups):
+            keys_to_scan = [cls._make_key(**groups)]
+        else:
+            # No (or partial) groups: scan all keys for this model
+            keys_response = await db.keys(f"{cls.__name__.lower()}*")
+            keys_to_scan = keys_response.keys or []
 
-        if limit is not None:
-            query = query.limit(limit)
-        if cursor != 0:
-            query = query.cursor(cursor)
-        if filters:
-            expr = _build_where_expr(filters)
-            query = query.where_expr(expr)
+        yielded = 0
+        for key in keys_to_scan:
+            key_groups = cls._make_groups(key)
+            query = db.scan(key)
 
-        try:
-            result = await query.asObjects()
-        except Tile38KeyNotFoundError:
-            return
+            if limit is not None:
+                if remaining := limit - yielded <= 0:
+                    return
+                query = query.limit(remaining)
 
-        for item in result.objects:
-            yield cls.from_pyle(item, **groups)
+            if cursor != 0:
+                query = query.cursor(cursor)
+
+            if filters:
+                expr = _build_where_expr(filters)
+                query = query.where_expr(expr)
+
+            try:
+                result = await query.asObjects()
+            except Tile38KeyNotFoundError:
+                continue
+
+            for item in result.objects:
+                yield cls.from_pyle(item, **key_groups)
+                yielded += 1
+                if limit is not None and yielded >= limit:
+                    return
+            # Only apply cursor to the first key when scanning multiple keys
+            cursor = 0
+
+    @classmethod
+    async def find_all(
+        cls: type[Tile38ModelType],
+        *,
+        limit: int | None = None,
+        cursor: int = 0,
+        **kwargs: Any,
+    ) -> list[Tile38ModelType]:
+        """Return a list of all objects matching the find criteria by consuming the find iterator."""
+        return [obj async for obj in cls.find(limit=limit, cursor=cursor, **kwargs)]
