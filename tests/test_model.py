@@ -21,6 +21,7 @@ def test_must_have_identifier():
         location: tuple[float, float] = PointField()
         group: str = Group()
         field: str = CharField()
+
     with pytest.raises(exceptions.NoIdentifier):
         Truck(
             location=(0.0, 0.0),
@@ -35,6 +36,7 @@ def test_multiple_identifiers_not_allowed():
         id2: int = Identifier()
         group: str = Group()
         field: str = CharField()
+
     with pytest.raises(exceptions.MultipleIdentifiers):
         Truck(
             id=1,
