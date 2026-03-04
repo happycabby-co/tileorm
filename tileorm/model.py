@@ -25,15 +25,15 @@ from tileorm.exceptions import (
     NoLocation,
 )
 from tileorm.fields import (
-    BoundsField,
     Data,
-    GeoHashField,
-    Group,
-    Identifier,
-    JsonField,
-    PointField,
     Tile38FieldInfo,
+    _BoundsField,
+    _GeoHashField,
+    _Group,
+    _Identifier,
+    _JsonField,
     _Location,
+    _PointField,
 )
 from tileorm.types import Bounds, Point
 
@@ -107,7 +107,7 @@ class Model(BaseModel):
 
     @classproperty
     def __identifier(cls: type[Model]) -> str:
-        fields = cls.fields_of_type(cls, Identifier)
+        fields = cls.fields_of_type(cls, _Identifier)
 
         if not fields:
             raise NoIdentifier(name=cls.__name__)
@@ -131,7 +131,7 @@ class Model(BaseModel):
 
     @classproperty
     def __groups(cls: type[Model]) -> list[str]:
-        return cls.fields_of_type(cls, Group)
+        return cls.fields_of_type(cls, _Group)
 
     @classproperty
     def __fields(cls: type[Model]) -> list[str]:
@@ -139,7 +139,7 @@ class Model(BaseModel):
 
     @classproperty
     def __json(cls: type[Model]) -> list[str]:
-        return cls.fields_of_type(cls, JsonField)
+        return cls.fields_of_type(cls, _JsonField)
 
     @classmethod
     def _make_key(cls, **groups: str) -> str:
@@ -209,11 +209,11 @@ class Model(BaseModel):
         query = database.set(self._key, self._identifier)
 
         match self.model_fields[self.__location]:
-            case PointField():
+            case _PointField():
                 query = query.point(self._location.lat, self._location.lon)
-            case GeoHashField():
+            case _GeoHashField():
                 query = query.hash(self._location)
-            case BoundsField():
+            case _BoundsField():
                 query = query.bounds(*self._location)
             case _:
                 raise NotImplementedError
@@ -283,16 +283,16 @@ class Model(BaseModel):
         obj = {cls.__identifier: identifier}
 
         match cls.model_fields[cls.__location]:
-            case PointField():
+            case _PointField():
                 obj[cls.__location] = Point(
                     geo["coordinates"][1],
                     geo["coordinates"][0],
                 )
-            case GeoHashField():
+            case _GeoHashField():
                 obj[cls.__location] = _coordinates_to_geohash(
                     geo["coordinates"], precision=9
                 )
-            case BoundsField():
+            case _BoundsField():
                 obj[cls.__location] = Bounds(
                     geo["coordinates"][0][0][1],
                     geo["coordinates"][0][0][0],
