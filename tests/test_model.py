@@ -18,9 +18,9 @@ from tileorm.types import Bounds, Point
 
 def test_must_have_identifier():
     class Truck(Model):
-        location: tuple[float, float] = PointField()  # type: ignore[assignment]
-        group: str = Group()  # type: ignore[assignment]
-        field: str = CharField()  # type: ignore[assignment]
+        location: tuple[float, float] = PointField()
+        group: str = Group()
+        field: str = CharField()
 
     with pytest.raises(exceptions.NoIdentifier):
         Truck(
@@ -32,10 +32,10 @@ def test_must_have_identifier():
 
 def test_multiple_identifiers_not_allowed():
     class Truck(Model):
-        id: int = Identifier()  # type: ignore[assignment]
-        id2: int = Identifier()  # type: ignore[assignment]
-        group: str = Group()  # type: ignore[assignment]
-        field: str = CharField()  # type: ignore[assignment]
+        id: int = Identifier()
+        id2: int = Identifier()
+        group: str = Group()
+        field: str = CharField()
 
     with pytest.raises(exceptions.MultipleIdentifiers):
         Truck(
@@ -49,10 +49,10 @@ def test_multiple_identifiers_not_allowed():
 @pytest.mark.asyncio
 async def test_create(tile38: Tile38):
     class Truck(Model):
-        id: int = Identifier()  # type: ignore[assignment]
-        group: str = Group()  # type: ignore[assignment]
-        location: Point = PointField()  # type: ignore[assignment]
-        field: str = CharField()  # type: ignore[assignment]
+        id: int = Identifier()
+        group: str = Group()
+        location: Point = PointField()
+        field: str = CharField()
 
         class Meta:
             database = tile38
@@ -69,10 +69,10 @@ async def test_create(tile38: Tile38):
 @pytest.mark.asyncio
 async def test_create_with_null_value(tile38: Tile38):
     class Truck(Model):
-        id: int = Identifier()  # type: ignore[assignment]
-        group: str = Group()  # type: ignore[assignment]
-        location: Point = PointField()  # type: ignore[assignment]
-        field: str | None = CharField()  # type: ignore[assignment]
+        id: int = Identifier()
+        group: str = Group()
+        location: Point = PointField()
+        field: str | None = CharField()
 
         class Meta:
             database = tile38
@@ -89,9 +89,9 @@ async def test_create_with_null_value(tile38: Tile38):
 @pytest.mark.asyncio
 async def test_create_with_point(tile38: Tile38):
     class Truck(Model):
-        id: int = Identifier()  # type: ignore[assignment]
-        group: str = Group()  # type: ignore[assignment]
-        location: Point = PointField()  # type: ignore[assignment]
+        id: int = Identifier()
+        group: str = Group()
+        location: Point = PointField()
 
         class Meta:
             database = tile38
@@ -107,9 +107,9 @@ async def test_create_with_point(tile38: Tile38):
 @pytest.mark.asyncio
 async def test_create_with_hash(tile38: Tile38):
     class Truck(Model):
-        id: int = Identifier()  # type: ignore[assignment]
-        group: str = Group()  # type: ignore[assignment]
-        location: str = GeoHashField()  # type: ignore[assignment]
+        id: int = Identifier()
+        group: str = Group()
+        location: str = GeoHashField()
 
         class Meta:
             database = tile38
@@ -127,9 +127,9 @@ async def test_create_with_hash(tile38: Tile38):
 @pytest.mark.asyncio
 async def test_create_with_bounds(tile38: Tile38):
     class Truck(Model):
-        id: int = Identifier()  # type: ignore[assignment]
-        group: str = Group()  # type: ignore[assignment]
-        location: Bounds = BoundsField()  # type: ignore[assignment]
+        id: int = Identifier()
+        group: str = Group()
+        location: Bounds = BoundsField()
 
         class Meta:
             database = tile38
@@ -145,10 +145,10 @@ async def test_create_with_bounds(tile38: Tile38):
 @pytest.mark.asyncio
 async def test_create_with_json(tile38: Tile38):
     class Truck(Model):
-        id: int = Identifier()  # type: ignore[assignment]
-        group: str = Group()  # type: ignore[assignment]
-        location: Point = PointField()  # type: ignore[assignment]
-        field: list[dict[str, int]] = JsonField()  # type: ignore[assignment]
+        id: int = Identifier()
+        group: str = Group()
+        location: Point = PointField()
+        field: list[dict[str, int]] = JsonField()
 
         class Meta:
             database = tile38
@@ -162,9 +162,9 @@ async def test_create_with_json(tile38: Tile38):
 @pytest.mark.asyncio
 async def test_get_with_point(tile38: Tile38):
     class Truck(Model):
-        id: int = Identifier()  # type: ignore[assignment]
-        group: str = Group()  # type: ignore[assignment]
-        location: Point = PointField()  # type: ignore[assignment]
+        id: int = Identifier()
+        group: str = Group()
+        location: Point = PointField()
 
         class Meta:
             database = tile38
@@ -181,9 +181,9 @@ async def test_get_with_point(tile38: Tile38):
 @pytest.mark.asyncio
 async def test_get_with_geohash(tile38: Tile38):
     class Truck(Model):
-        id: int = Identifier()  # type: ignore[assignment]
-        group: str = Group()  # type: ignore[assignment]
-        location: str = GeoHashField()  # type: ignore[assignment]
+        id: int = Identifier()
+        group: str = Group()
+        location: str = GeoHashField()
 
         class Meta:
             database = tile38
@@ -200,9 +200,9 @@ async def test_get_with_geohash(tile38: Tile38):
 @pytest.mark.asyncio
 async def test_get_with_bounds(tile38: Tile38):
     class Truck(Model):
-        id: int = Identifier()  # type: ignore[assignment]
-        group: str = Group()  # type: ignore[assignment]
-        location: Bounds = BoundsField()  # type: ignore[assignment]
+        id: int = Identifier()
+        group: str = Group()
+        location: Bounds = BoundsField()
 
         class Meta:
             database = tile38
@@ -219,10 +219,10 @@ async def test_get_with_bounds(tile38: Tile38):
 @pytest.mark.asyncio
 async def test_get_with_json(tile38: Tile38):
     class Truck(Model):
-        id: int = Identifier()  # type: ignore[assignment]
-        group: str = Group()  # type: ignore[assignment]
-        location: Point = PointField()  # type: ignore[assignment]
-        field: list[dict[str, int]] = JsonField()  # type: ignore[assignment]
+        id: int = Identifier()
+        group: str = Group()
+        location: Point = PointField()
+        field: list[dict[str, int]] = JsonField()
 
         class Meta:
             database = tile38
@@ -236,10 +236,10 @@ async def test_get_with_json(tile38: Tile38):
 @pytest.mark.asyncio
 async def test_get_not_found(tile38: Tile38):
     class Truck(Model):
-        id: int = Identifier()  # type: ignore[assignment]
-        group: str = Group()  # type: ignore[assignment]
-        location: Point = PointField()  # type: ignore[assignment]
-        field: str = CharField()  # type: ignore[assignment]
+        id: int = Identifier()
+        group: str = Group()
+        location: Point = PointField()
+        field: str = CharField()
 
         class Meta:
             database = tile38
@@ -253,12 +253,10 @@ async def TruckModel(tile38: Tile38):
     """Fixture that provides a Truck model class with database configured."""
 
     class Truck(Model):
-        id: int = Identifier()  # type: ignore[assignment]
-        group: str = Group()  # type: ignore[assignment]
-        location: Point = PointField()  # type: ignore[assignment]
-        name: str | None = CharField(  # type: ignore[assignment]
-            default=None
-        )  # Make optional for now until field parsing is fixed
+        id: int = Identifier()
+        group: str = Group()
+        location: Point = PointField()
+        name: str | None = CharField(default=None)
 
         class Meta:
             database = tile38
@@ -533,11 +531,11 @@ async def test_find_with_multiple_equality_filters(tile38: Tile38):
     """Find with multiple filters returns objects matching all (AND)."""
 
     class TruckWithStatus(Model):
-        id: int = Identifier()  # type: ignore[assignment]
-        group: str = Group()  # type: ignore[assignment]
-        location: Point = PointField()  # type: ignore[assignment]
-        name: str = CharField()  # type: ignore[assignment]
-        status: str = CharField()  # type: ignore[assignment]
+        id: int = Identifier()
+        group: str = Group()
+        location: Point = PointField()
+        name: str = CharField()
+        status: str = CharField()
 
         class Meta:
             database = tile38
@@ -603,11 +601,11 @@ async def test_find_partial_groups_raises(tile38: Tile38):
     """find() raises TypeError when some but not all group arguments are provided."""
 
     class TruckTwoGroups(Model):
-        id: int = Identifier()  # type: ignore[assignment]
-        region: str = Group()  # type: ignore[assignment]
-        fleet: str = Group()  # type: ignore[assignment]
-        location: Point = PointField()  # type: ignore[assignment]
-        name: str = CharField()  # type: ignore[assignment]
+        id: int = Identifier()
+        region: str = Group()
+        fleet: str = Group()
+        location: Point = PointField()
+        name: str = CharField()
 
         class Meta:
             database = tile38
@@ -627,11 +625,11 @@ async def test_find_no_groups_two_groups_non_alphabetical_order(tile38: Tile38):
     """
 
     class Vehicle(Model):
-        id: int = Identifier()  # type: ignore[assignment]
-        region: str = Group()  # type: ignore[assignment]
-        fleet: str = Group()  # type: ignore[assignment]
-        location: Point = PointField()  # type: ignore[assignment]
-        name: str = CharField()  # type: ignore[assignment]
+        id: int = Identifier()
+        region: str = Group()
+        fleet: str = Group()
+        location: Point = PointField()
+        name: str = CharField()
 
         class Meta:
             database = tile38
