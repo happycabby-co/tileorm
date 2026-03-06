@@ -476,7 +476,7 @@ class Model(BaseModel):
             query = db.scan(key)
 
             if limit is not None:
-                if remaining := limit - yielded <= 0:
+                if (remaining := limit - yielded) <= 0:
                     return
                 query = query.limit(remaining)
 
