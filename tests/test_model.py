@@ -597,6 +597,19 @@ async def test_find_limit(TruckModel):
 
 
 @pytest.mark.asyncio
+async def test_find_limit_across_multiple_keys(TruckModel):
+    """find() with limit respects the limit when scanning multiple keys (no group)."""
+    await TruckModel.create(id=1, group="find5b_a", location=Point(0.0, 0.0), name="x")
+    await TruckModel.create(id=2, group="find5b_a", location=Point(0.0, 0.0), name="x")
+    await TruckModel.create(id=1, group="find5b_b", location=Point(0.0, 0.0), name="x")
+    await TruckModel.create(id=2, group="find5b_b", location=Point(0.0, 0.0), name="x")
+
+    results = await TruckModel.find_all(limit=3)
+
+    assert len(results) == 3
+
+
+@pytest.mark.asyncio
 async def test_find_partial_groups_raises(tile38: Tile38):
     """find() raises TypeError when some but not all group arguments are provided."""
 
