@@ -238,6 +238,12 @@ class Model(BaseModel):
             )
         return self
 
+    async def delete(self) -> None:
+        database = self.Meta.database
+        if database is None:
+            raise RuntimeError("Model.Meta.database must be set")
+        await database.delete(self._key, self._identifier)
+
     @classmethod
     async def exists(
         cls: type[Tile38ModelType],

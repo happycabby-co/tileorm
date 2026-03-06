@@ -2,6 +2,8 @@ import pytest
 import pytest_asyncio
 from pyle38 import Tile38
 
+from pyle38.errors import Tile38KeyNotFoundError
+
 from tileorm import exceptions
 from tileorm.fields import (
     BoundsField,
@@ -231,6 +233,27 @@ async def test_get_with_json(tile38: Tile38):
 
     truck = await Truck.get(1, group="foo")
     assert truck.field == [{"test": 1}]
+
+
+@pytest.mark.asyncio
+async def test_delete(tile38: Tile38):
+    class Truck(Model):
+        id: int = Identifier()
+        group: str = Group()
+        location: Point = PointField()
+
+        class Meta:
+            database = tile38
+
+    await Truck.create(id=1, group="foo", location=(0.0, 0.0))
+    assert await tile38.exists("truck:group=foo", "1")
+
+    truck = await Truck.get(1, group="foo")
+    await truck.delete()
+
+    assert not await Truck.exists("1", group="foo")
+    with pytest.raises(Tile38KeyNotFoundError):
+        await tile38.exists("truck:group=foo", "1")
 
 
 @pytest.mark.asyncio
