@@ -3,9 +3,7 @@ from typing import Any
 from pydantic import fields
 
 
-class Tile38FieldInfo(fields.FieldInfo):
-    def __init__(self, **kwargs) -> None:
-        super().__init__(**kwargs)
+class Tile38FieldInfo(fields.FieldInfo): ...
 
 
 class _Identifier(Tile38FieldInfo): ...
@@ -39,9 +37,6 @@ class _FloatField(_Data): ...
 
 
 class _IntegerField(_Data): ...
-
-
-class _ComplexField(_Data): ...
 
 
 # Factory functions returning Any so that "name: T = FieldName()" type-checks.
@@ -79,10 +74,6 @@ def FloatField(**kwargs: Any) -> Any:
 
 def IntegerField(**kwargs: Any) -> Any:
     return _IntegerField(**kwargs)
-
-
-def ComplexField(**kwargs: Any) -> Any:
-    return _ComplexField(**kwargs)
 
 
 # Data is used in fields_of_type, not as a default in model bodies; alias for compatibility.
