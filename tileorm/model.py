@@ -206,7 +206,7 @@ class Model(BaseModel):
             raise RuntimeError("Model.Meta.database must be set")
         query = database.set(self._key, self._identifier)
 
-        match self.model_fields[self.__location]:
+        match type(self).model_fields[self.__location]:
             case _PointField():
                 query = query.point(self._location.lat, self._location.lon)
             case _GeoHashField():
