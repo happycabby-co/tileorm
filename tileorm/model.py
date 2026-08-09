@@ -74,8 +74,10 @@ class Model(BaseModel):
 
     def __init__(self, **data: Any) -> None:
         super().__init__(**data)
-        self._identifier
-        self._location
+        # Resolve eagerly so a Meta that omits these fields fails here,
+        # not later when saving/querying.
+        _ = self._identifier
+        _ = self._location
 
     class classproperty:
         def __init__(self, func):

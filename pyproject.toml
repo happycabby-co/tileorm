@@ -26,6 +26,7 @@ dev = [
     "pytest-asyncio~=0.24.0",
     "ty>=0.0.69",
     "poethepoet>=0.48.0",
+    "pre-commit>=4.6.1",
 ]
 
 [tool.uv]

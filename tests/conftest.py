@@ -27,7 +27,7 @@ def _wait_for_tile38(
 
             asyncio.run(check())
             return
-        except Exception:
+        except Exception:  # noqa: BLE001 -- any failure means "not ready yet", keep polling
             time.sleep(TILE38_READY_POLL_INTERVAL)
     raise TimeoutError(f"Tile38 at {url} did not become ready within {timeout}s")
 
@@ -48,9 +48,6 @@ async def tile38(tile38_running):
     try:
         yield client
     finally:
-        try:
-            await client.flushdb()
-            await client.readonly(False)
-        except Exception:
-            await client.flushdb()
+        await client.flushdb()
+        await client.readonly(False)
         await client.quit()

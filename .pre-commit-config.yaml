@@ -1,0 +1,27 @@
+repos:
+  - repo: local
+    hooks:
+      - id: ci-format
+        name: ci:format
+        entry: uv run poe ci:format
+        language: system
+        pass_filenames: false
+        stages: [pre-commit]
+      - id: ci-lint
+        name: ci:lint
+        entry: uv run poe ci:lint
+        language: system
+        pass_filenames: false
+        stages: [pre-commit]
+      - id: check
+        name: check
+        entry: uv run poe check
+        language: system
+        pass_filenames: false
+        stages: [pre-commit]
+      - id: all
+        name: all
+        entry: uv run poe all
+        language: system
+        pass_filenames: false
+        stages: [pre-push]
