@@ -312,7 +312,7 @@ async def test_requires_database_configured(method):
         group: str = Group()
         location: Point = PointField()
 
-    truck = Truck(id=1, group="foo", location=(0.0, 0.0))
+    truck = Truck(id=1, group="foo", location=Point(0.0, 0.0))
 
     with pytest.raises(RuntimeError, match="Model.Meta.database must be set"):
         attr = getattr(truck, method)

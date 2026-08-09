@@ -18,7 +18,7 @@ from .fields import (
     PointField,
 )
 from .model import Model
-from .types import Bounds, Point
+from .types import Bounds, Point, PointLike
 
 __all__ = [
     "Bounds",
@@ -38,5 +38,6 @@ __all__ = [
     "NotFoundError",
     "Point",
     "PointField",
+    "PointLike",
     "TileOrmException",
 ]

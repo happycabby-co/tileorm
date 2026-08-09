@@ -31,7 +31,7 @@ from tileorm import (
     Model,
     PointField,
 )
-from tileorm.types import Point
+from tileorm.types import Point, PointLike
 
 
 class Step(BaseModel):
@@ -48,6 +48,21 @@ class Job(Model):
     route: list[Step] = JsonField(default_factory=list)
 
 
+def test_point_like_field_accepts_plain_tuple():
+    """PointLike widens accepted input, but Pydantic still coerces to a real Point."""
+
+    class Delivery(Model):
+        id: str = Identifier()
+        location: PointLike = PointField()
+
+    delivery = Delivery(id="1", location=(0.0, 0.0))
+
+    assert_type(delivery.location, PointLike)
+    assert isinstance(delivery.location, Point)
+    assert delivery.location.lat == 0.0
+    assert delivery.location.lon == 0.0
+
+
 def test_field_factories_produce_correctly_typed_attributes():
     job = Job(id="1", location=Point(0.0, 0.0))
 
@@ -60,6 +75,14 @@ def test_field_factories_produce_correctly_typed_attributes():
     assert job.attempts == 0
     assert job.name == "job"
     assert job.route == []
+
+
+@pytest.mark.asyncio
+async def test_nearby_accepts_plain_tuple(job):
+    """Pydantic coerces a plain tuple into a Point, so `nearby` should accept one too."""
+    async for result in Job.nearby((0.0, 0.0)):
+        assert_type(result, Job)
+        assert result.id == "1"
 
 
 def test_field_factories_accept_explicit_values():

@@ -33,7 +33,7 @@ from tileorm.fields import (
     _Location,
     _PointField,
 )
-from tileorm.types import Bounds, Point
+from tileorm.types import Bounds, Point, PointLike
 
 
 class ObjectResponse(Protocol):
@@ -350,13 +350,18 @@ class Model(BaseModel):
     @classmethod
     async def nearby(
         cls,
-        target: Point | str | Model,
+        target: PointLike | str | Model,
         radius: float = 1000.0,
         **groups: str,
     ) -> AsyncIterator[Self]:
         key = cls._make_key(**groups)
         db = cls._read_db
         query = db.nearby(key)
+
+        # NamedTuple subclasses aren't matched by isinstance() checks against
+        # plain tuples, so coerce a bare (lat, lon) tuple into a real Point.
+        if isinstance(target, tuple) and not isinstance(target, Point):
+            target = Point(*target)
 
         # Determine if target is a Point, object_id (str), or Model instance
         if isinstance(target, Point):
