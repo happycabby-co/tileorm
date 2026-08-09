@@ -6,8 +6,6 @@ from typing import (
     ClassVar,
     Protocol,
     Self,
-    TypeVar,
-    overload,
 )
 
 import pygeohash
@@ -36,8 +34,6 @@ from tileorm.fields import (
     _PointField,
 )
 from tileorm.types import Bounds, Point
-
-Tile38ModelType = TypeVar("Tile38ModelType", bound="Model")
 
 
 class ObjectResponse(Protocol):
@@ -348,33 +344,6 @@ class Model(BaseModel):
         key: str,
     ) -> Self:
         return await cls.get(identifier, **cls._make_groups(key))
-
-    @overload
-    @classmethod
-    async def nearby(
-        cls: type[Tile38ModelType],
-        point: Point,
-        radius: float = 1000.0,
-        **groups: str,
-    ) -> AsyncIterator[Tile38ModelType]: ...
-
-    @overload
-    @classmethod
-    async def nearby(
-        cls: type[Tile38ModelType],
-        object_id: str,
-        radius: float = 1000.0,
-        **groups: str,
-    ) -> AsyncIterator[Tile38ModelType]: ...
-
-    @overload
-    @classmethod
-    async def nearby(
-        cls: type[Tile38ModelType],
-        model: Model,
-        radius: float = 1000.0,
-        **groups: str,
-    ) -> AsyncIterator[Tile38ModelType]: ...
 
     @classmethod
     async def nearby(
