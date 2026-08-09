@@ -1,6 +1,6 @@
 [project]
 name = "tileorm"
-version = "0.2.0"
+version = "0.3.0"
 description = "An ORM for Tile38 inspired by Peewee - with Pydantic validation"
 authors = [{ name = "Alex Ward", email = "alxwrd@googlemail.com" }]
 requires-python = ">=3.12,<4"
@@ -14,7 +14,7 @@ classifiers = [
 ]
 dependencies = [
     "pyle38~=0.14.2",
-    "pydantic~=2.10.5",
+    "pydantic~=2.13.4",
     "pygeohash~=3.2.2",
 ]
 

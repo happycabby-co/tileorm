@@ -3,7 +3,7 @@ from typing import Any
 from pydantic import fields
 
 
-class Tile38FieldInfo(fields.FieldInfo): ...
+class Tile38FieldInfo(fields.FieldInfo): ...  # ty: ignore[subclass-of-final-class]
 
 
 class _Identifier(Tile38FieldInfo): ...
