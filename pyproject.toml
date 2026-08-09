@@ -40,6 +40,9 @@ requires = ["uv_build~=0.10.0"]
 build-backend = "uv_build"
 
 
+[tool.coverage.run]
+data_file = "tests/coverage/.coverage"
+
 [tool.poe.tasks]
 all.sequence = [
     { ref = "format" },
@@ -63,6 +66,15 @@ check.help = "Performs type checking"
 
 test.cmd = "pytest ${PWD}"
 test.help = "Runs all tests for the project(s) in scope"
+
+"cov:html".cmd = "pytest --cov=tileorm --cov-report=html:tests/coverage/htmlcov ${PWD}"
+"cov:html".help = "Runs tests with coverage, producing an HTML report"
+
+"cov:xml".cmd = "pytest --cov=tileorm --cov-report=xml:tests/coverage/coverage.xml ${PWD}"
+"cov:xml".help = "Runs tests with coverage, producing an XML report (for CI tooling)"
+
+cov.sequence = [ "cov:html", "cov:xml" ]
+cov.help = "Runs tests with coverage, producing HTML and XML reports"
 
 
 "ci:format" = { cmd = "ruff format --check ${PWD}", help = "Fails if the code is not formatted correctly" }
