@@ -314,8 +314,9 @@ class Model(BaseModel):
             and cls.__fields
             and len(fields) == len(cls.__fields)
         ):
-            # SCAN returns fields as ordered list of values; map to field names
-            obj.update(dict(zip(cls.__fields, fields)))
+            # SCAN returns field values as a list ordered alphabetically by
+            # field name, not in class-declaration order; sort to match.
+            obj.update(dict(zip(sorted(cls.__fields), fields)))
         obj.update(**(geo or {}))
 
         for group, value in groups.items():

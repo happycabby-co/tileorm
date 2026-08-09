@@ -10,9 +10,11 @@ from tileorm import exceptions
 from tileorm.fields import (
     BoundsField,
     CharField,
+    FloatField,
     GeoHashField,
     Group,
     Identifier,
+    IntegerField,
     JsonField,
     PointField,
 )
@@ -595,6 +597,55 @@ async def test_find_without_groups_scans_all_keys(TruckModel):
     assert groups == {("find_all_a", 1), ("find_all_a", 2), ("find_all_b", 1)}
     names = {t.name for t in results}
     assert names == {"x", "y", "z"}
+
+
+@pytest_asyncio.fixture
+async def OutOfAlphabeticalOrderModel(tile38: Tile38):
+    """Model with Data fields declared out of alphabetical order.
+
+    SCAN returns field values as a positional list ordered alphabetically
+    by field name, not in class-declaration order, so this fixture is
+    designed to catch a mismatch between the two orderings.
+    """
+
+    class Job(Model):
+        id: str = Identifier()
+        group: str = Group()
+        location: Point = PointField()
+        will_wait: float = FloatField(default=1200.0)
+        attempts: int = IntegerField(default=0)
+        name: str = CharField(default="job")
+
+        class Meta:
+            database = tile38
+
+    return Job
+
+
+@pytest.mark.asyncio
+async def test_find_maps_scan_field_values_by_name_not_declaration_order(
+    OutOfAlphabeticalOrderModel,
+):
+    """SCAN must map field values to field names by Tile38's alphabetical
+    ordering, not by the order fields were declared on the model."""
+    await OutOfAlphabeticalOrderModel.create(
+        id="1",
+        group="jobs",
+        location=Point(0.0, 0.0),
+        will_wait=42.5,
+        attempts=3,
+        name="build",
+    )
+
+    results = []
+    async for job in OutOfAlphabeticalOrderModel.find(group="jobs"):
+        results.append(job)
+
+    assert len(results) == 1
+    job = results[0]
+    assert job.will_wait == 42.5
+    assert job.attempts == 3
+    assert job.name == "build"
 
 
 @pytest.mark.asyncio
