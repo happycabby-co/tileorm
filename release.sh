@@ -40,10 +40,11 @@ gum style --border normal --margin "1" --padding "0 2" --border-foreground 212 "
 
 bump=$(gum choose --header "Version bump" major minor patch)
 
-gum confirm "Bump $bump version, commit, and tag?" || exit 1
+new_version=$(uv version --bump "$bump" --dry-run --short)
 
-new_version=$(uv version --bump "$bump" --short)
-gum log -l info "New version: $new_version"
+gum confirm "Bump to $new_version, commit, and tag?" || exit 1
+
+uv version --bump "$bump" --short >/dev/null
 
 git add pyproject.toml
 git commit -m "version $new_version"
