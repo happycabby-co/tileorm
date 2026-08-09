@@ -1,6 +1,9 @@
+from unittest import mock
+
 import pytest
 import pytest_asyncio
 from pyle38 import Tile38
+from pyle38.commands.scan import Scan
 from pyle38.errors import Tile38KeyNotFoundError
 
 from tileorm import exceptions
@@ -784,3 +787,110 @@ async def test_find_all_matches_find_iterator(TruckModel):
 
     assert len(from_iterator) == len(from_find_all) == 3
     assert from_iterator == from_find_all
+
+
+@pytest.mark.asyncio
+async def test_find_limit_reached_stops_scanning_further_keys(
+    TruckModel, tile38: Tile38
+):
+    """Once limit is satisfied by earlier keys, find() must not scan remaining keys."""
+    for group in ("find_stop_a", "find_stop_b", "find_stop_c"):
+        await TruckModel.create(id=1, group=group, location=Point(0.0, 0.0), name="x")
+        await TruckModel.create(id=2, group=group, location=Point(0.0, 0.0), name="x")
+
+    with mock.patch.object(tile38, "scan", wraps=tile38.scan) as scan_spy:
+        results = await TruckModel.find_all(limit=3)
+
+    assert len(results) == 3
+    # 3 groups/keys exist with 2 objects each; a limit of 3 is satisfied after the
+    # second group/key is scanned, so the third group/key must never be touched.
+    assert scan_spy.call_count == 2
+
+
+@pytest.mark.asyncio
+async def test_find_limit_zero_yields_nothing_without_querying(
+    TruckModel, tile38: Tile38
+):
+    """A limit of 0 is already satisfied before any key is queried."""
+    await TruckModel.create(id=1, group="find_zero", location=Point(0.0, 0.0), name="x")
+
+    with mock.patch.object(
+        Scan, "asObjects", autospec=True, wraps=Scan.asObjects
+    ) as query_spy:
+        results = await TruckModel.find_all(group="find_zero", limit=0)
+
+    assert results == []
+    query_spy.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_find_cursor_on_initial_call_resumes_scan(TruckModel, tile38: Tile38):
+    """A non-zero cursor passed to find() resumes the scan from that position."""
+    await TruckModel.create(
+        id=1, group="find_cursor", location=Point(0.0, 0.0), name="a"
+    )
+    await TruckModel.create(
+        id=2, group="find_cursor", location=Point(0.0, 0.0), name="b"
+    )
+    await TruckModel.create(
+        id=3, group="find_cursor", location=Point(0.0, 0.0), name="c"
+    )
+
+    key = TruckModel._make_key(group="find_cursor")
+    first_page = await tile38.scan(key).limit(1).asObjects()
+    assert len(first_page.objects) == 1
+
+    remaining = []
+    async for truck in TruckModel.find(group="find_cursor", cursor=first_page.cursor):
+        remaining.append(truck)
+
+    all_ids = {t.id for t in remaining}
+    first_id = int(first_page.objects[0].id)
+    assert first_id not in all_ids
+    assert len(remaining) == 2
+    assert all_ids | {first_id} == {1, 2, 3}
+
+
+@pytest.mark.asyncio
+async def test_find_key_not_found_on_one_key_still_yields_from_next(
+    TruckModel, tile38: Tile38, monkeypatch
+):
+    """A Tile38KeyNotFoundError scanning one key must not stop results from other keys."""
+    await TruckModel.create(
+        id=1, group="find_err_bad", location=Point(0.0, 0.0), name="x"
+    )
+    await TruckModel.create(
+        id=1, group="find_err_good", location=Point(0.0, 0.0), name="y"
+    )
+    await TruckModel.create(
+        id=2, group="find_err_good", location=Point(0.0, 0.0), name="z"
+    )
+
+    bad_key = TruckModel._make_key(group="find_err_bad")
+    original_scan = tile38.scan
+
+    class _RaisingScan:
+        def limit(self, *args, **kwargs):
+            return self
+
+        def cursor(self, *args, **kwargs):
+            return self
+
+        def where_expr(self, *args, **kwargs):
+            return self
+
+        async def asObjects(self):
+            raise Tile38KeyNotFoundError("simulated key not found")
+
+    def flaky_scan(key):
+        if key == bad_key:
+            return _RaisingScan()
+        return original_scan(key)
+
+    monkeypatch.setattr(tile38, "scan", flaky_scan)
+
+    results = await TruckModel.find_all()
+
+    assert len(results) == 2
+    names = {t.name for t in results}
+    assert names == {"y", "z"}
