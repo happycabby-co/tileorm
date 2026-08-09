@@ -15,7 +15,7 @@ from tileorm import Identifier, Model
 
 class Truck(Model):
     id: int = Identifier()
-    # ...
+    ...
 ```
 
 A model with zero or more than one `Identifier()` field raises `NoIdentifier` or `MultipleIdentifiers` when you instantiate it. See [Error handling](/guides/errors/).
@@ -34,7 +34,7 @@ from tileorm import Model, Point, PointField
 
 class Truck(Model):
     location: Point = PointField()
-    # ...
+    ...
 ```
 
 See [Geo types](/guides/geo-types/) for the full shape of `Point` and `Bounds`.
@@ -49,7 +49,7 @@ from tileorm import Group, Model
 
 class Truck(Model):
     group: str = Group()
-    # ...
+    ...
 ```
 
 TileORM builds the Tile38 key from the model name and its group values, for example `truck:group=fleet1`. A model can declare more than one `Group()` field; TileORM sorts the group names alphabetically when it builds the key.
@@ -58,12 +58,12 @@ TileORM builds the Tile38 key from the model name and its group values, for exam
 
 Data fields store plain values alongside the location. TileORM saves them as Tile38 fields on the object.
 
-| Field | Python type |
-| --- | --- |
-| `CharField()` | `str` |
-| `FloatField()` | `float` |
-| `IntegerField()` | `int` |
-| `JsonField()` | any JSON-serializable value |
+| Field            | Python type                 |
+| ---------------- | --------------------------- |
+| `CharField()`    | `str`                       |
+| `FloatField()`   | `float`                     |
+| `IntegerField()` | `int`                       |
+| `JsonField()`    | any JSON-serializable value |
 
 ```python
 from tileorm import CharField, FloatField, IntegerField, JsonField, Model

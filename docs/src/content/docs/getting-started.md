@@ -30,12 +30,13 @@ db = Tile38("redis://localhost:9851")
 A model is a Pydantic model with TileORM fields. Every model needs one `Identifier` field and one location field (`PointField`, `BoundsField`, or `GeoHashField`).
 
 ```python
-from tileorm import CharField, Group, Identifier, Model, PointField
+from tileorm import CharField, Group, Identifier, Model, Point, PointField
 
 
 class Truck(Model):
     id: int = Identifier()
     group: str = Group()
+    location: Point = PointField()
     field: str = CharField()
 
     class Meta:
