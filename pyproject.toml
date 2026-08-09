@@ -20,12 +20,12 @@ dependencies = [
 
 [dependency-groups]
 dev = [
-    "ruff~=0.7.1",
-    "isort~=5.13.2",
+    "ruff~=0.16.2",
     "pytest~=8.3.3",
     "pytest-cov~=6.0.0",
     "pytest-asyncio~=0.24.0",
-    "ty>=0.0.19",
+    "ty>=0.0.69",
+    "poethepoet>=0.48.0",
 ]
 
 [tool.uv]
@@ -37,3 +37,32 @@ module-root = ""
 [build-system]
 requires = ["uv_build~=0.10.0"]
 build-backend = "uv_build"
+
+
+[tool.poe.tasks]
+all.sequence = [
+    { ref = "format" },
+    { ref = "lint" },
+    { ref = "check" },
+    { ref = "test" },
+]
+all.help = "Run all check tasks"
+
+_fmt = "ruff format ${PWD}"
+_sort = "ruff check --select I --fix ${PWD}"
+
+format.sequence = [ "_fmt", "_sort" ]
+format.help = "Formats the project(s) in scope"
+
+lint.cmd = "ruff check --fix ${PWD}"
+lint.help = "Perform a lint check"
+
+check.cmd = "ty check ${PWD}"
+check.help = "Performs type checking"
+
+test.cmd = "pytest ${PWD}"
+test.help = "Runs all tests for the project(s) in scope"
+
+
+"ci:format" = { cmd = "ruff format --check ${PWD}", help = "Fails if the code is not formatted correctly" }
+"ci:lint" = { cmd = "ruff check ${PWD}", help = "Fails if lint errors, but won't auto fix" }

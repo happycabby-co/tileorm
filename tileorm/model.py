@@ -1,8 +1,8 @@
 from __future__ import annotations
 
+from collections.abc import AsyncIterator
 from typing import (
     Any,
-    AsyncIterator,
     ClassVar,
     Protocol,
     Self,
@@ -154,7 +154,7 @@ class Model(BaseModel):
         return (
             f"{cls.__name__.lower()}"
             f"{':' if groups else ''}"
-            f"{':'.join([f"{group}={groups.get(group)}" for group in sorted(groups)])}"
+            f"{':'.join([f'{group}={groups.get(group)}' for group in sorted(groups)])}"
         )
 
     @classmethod
@@ -246,7 +246,7 @@ class Model(BaseModel):
 
     @classmethod
     async def exists(
-        cls: type[Tile38ModelType],
+        cls,
         identifier: str,
         **groups: str,
     ) -> bool:
@@ -261,19 +261,19 @@ class Model(BaseModel):
             return False
 
     @classmethod
-    async def create(cls: type[Tile38ModelType], **kwargs: Any) -> Tile38ModelType:
+    async def create(cls, **kwargs: Any) -> Self:
         instance = cls(**kwargs)
         await instance.save()
         return instance
 
     @classmethod
     def from_pyle(
-        cls: type[Tile38ModelType],
+        cls,
         response: ObjectResponse,
         *,
         id_override: str | None = None,
         **groups: str,
-    ) -> Tile38ModelType:
+    ) -> Self:
         """Build a model instance from a pyle38 object response (e.g. query.asObject() or item in asObjects().objects).
         For GET, the single-object response does not include an id attribute, so pass id_override.
         """
@@ -326,10 +326,10 @@ class Model(BaseModel):
 
     @classmethod
     async def get(
-        cls: type[Tile38ModelType],
+        cls,
         identifier: str | int,
         **groups: str,
-    ) -> Tile38ModelType:
+    ) -> Self:
         id_str = str(identifier)
         key = cls._make_key(**groups)
         query = cls._read_db.get(key, id_str).withfields()
@@ -343,10 +343,10 @@ class Model(BaseModel):
 
     @classmethod
     async def get_by_key(
-        cls: type[Tile38ModelType],
+        cls,
         identifier: str,
         key: str,
-    ) -> Tile38ModelType:
+    ) -> Self:
         return await cls.get(identifier, **cls._make_groups(key))
 
     @overload
@@ -378,11 +378,11 @@ class Model(BaseModel):
 
     @classmethod
     async def nearby(
-        cls: type[Tile38ModelType],
+        cls,
         target: Point | str | Model,
         radius: float = 1000.0,
         **groups: str,
-    ) -> AsyncIterator[Tile38ModelType]:
+    ) -> AsyncIterator[Self]:
         key = cls._make_key(**groups)
         db = cls._read_db
         query = db.nearby(key)
@@ -438,12 +438,12 @@ class Model(BaseModel):
 
     @classmethod
     async def find(
-        cls: type[Tile38ModelType],
+        cls,
         *,
         limit: int | None = None,
         cursor: int = 0,
         **kwargs: Any,
-    ) -> AsyncIterator[Tile38ModelType]:
+    ) -> AsyncIterator[Self]:
         """Find objects that match the given filters.
 
         Groups (e.g. group=...) are optional. If omitted, all keys for this
@@ -508,11 +508,11 @@ class Model(BaseModel):
 
     @classmethod
     async def find_all(
-        cls: type[Tile38ModelType],
+        cls,
         *,
         limit: int | None = None,
         cursor: int = 0,
         **kwargs: Any,
-    ) -> list[Tile38ModelType]:
+    ) -> list[Self]:
         """Return a list of all objects matching the find criteria by consuming the find iterator."""
         return [obj async for obj in cls.find(limit=limit, cursor=cursor, **kwargs)]

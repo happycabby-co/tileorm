@@ -17,6 +17,7 @@ from tileorm import Model, Identifier, Group, CharField, Tile38, Point
 
 db = Tile38("redis://localhost:9851")
 
+
 class Truck(Model):
     id: int = Identifier()
     group: str = Group()
@@ -33,7 +34,7 @@ truck1 = await Truck.create(
     field="value",
 )
 
-truck = await Truck.get(id=1, group="fleet1") 
+truck = await Truck.get(id=1, group="fleet1")
 # Truck(id=1, location=Location(lat=52.25, lon=13.37), group='fleet1', field='value')
 
 await db.get(truck._key, truck.id).withfields().exec()
