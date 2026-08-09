@@ -1,0 +1,65 @@
+---
+title: TileORM
+description: An ORM for Tile38, inspired by Peewee, with Pydantic validation.
+template: splash
+hero:
+  tagline: An ORM for Tile38. Inspired by Peewee. Validated by Pydantic.
+  actions:
+    - text: Get started
+      link: /getting-started/
+      icon: right-arrow
+    - text: View on GitHub
+      link: https://github.com/happycabby-co/tileorm
+      icon: external
+      variant: minimal
+---
+
+import { Card, CardGrid } from "@astrojs/starlight/components";
+
+```python
+from tileorm import CharField, Group, Identifier, Model, Point, PointField, Tile38
+
+db = Tile38("redis://localhost:9851")
+
+
+class Truck(Model):
+    id: int = Identifier()
+    group: str = Group()
+    field: str = CharField()
+    location: Point = PointField()
+
+    class Meta:
+        database = db
+
+
+truck = await Truck.create(
+    id=1,
+    group="fleet1",
+    location=Point(lat=52.25, lon=13.37),
+    field="value",
+)
+
+truck = await Truck.get(id=1, group="fleet1")
+# Truck(id=1, location=Point(lat=52.25, lon=13.37), group='fleet1', field='value')
+```
+
+## Why TileORM
+
+<CardGrid>
+  <Card title="Models, not raw commands" icon="document">
+    Define a Tile38 object as a Pydantic model. TileORM turns field values into
+    `SET`, `GET`, `SCAN`, and `NEARBY` commands for you.
+  </Card>
+  <Card title="Validated fields" icon="approve-check">
+    Pydantic validates every field on the way in and out, including geo types
+    like `Point` and `Bounds`.
+  </Card>
+  <Card title="Async queries" icon="rocket">
+    `create`, `get`, `find`, and `nearby` are async methods that return model
+    instances, not raw JSON.
+  </Card>
+  <Card title="Small surface area" icon="setting">
+    One `Model` base class, a handful of field types, and a small set of
+    exceptions. Read the guides in a sitting.
+  </Card>
+</CardGrid>

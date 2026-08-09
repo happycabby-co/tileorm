@@ -5,6 +5,8 @@
 > [!WARNING]
 > Not advisable for production critical workflows
 
+Docs: [tileorm.org](https://tileorm.org)
+
 ## Getting started
 
 ```shell

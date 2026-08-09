@@ -1,0 +1,97 @@
+:root {
+    --tileorm-accent: #22d3ee;
+    --tileorm-accent-dark: #0e7490;
+}
+
+.hero > .stack > :first-child {
+    background: linear-gradient(
+        135deg,
+        var(--sl-color-white) 20%,
+        var(--tileorm-accent) 80%
+    );
+    background-clip: text;
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+}
+
+.hero {
+    position: relative;
+}
+
+/*
+ * .hero has its own top padding (up to 10rem on wide viewports), so a
+ * background on .hero itself only starts fading in well below the header.
+ * Extend the glow upward by the fixed header's height so it's anchored to
+ * the actual top of the page, right behind the header.
+ */
+.hero::before {
+    content: "";
+    position: absolute;
+    inset-inline: 0;
+    top: calc(-1 * var(--sl-nav-height));
+    height: calc(100% + var(--sl-nav-height));
+    z-index: -1;
+    pointer-events: none;
+    background: radial-gradient(
+        ellipse 60% 45% at 50% 0%,
+        color-mix(in srgb, var(--tileorm-accent) 22%, transparent),
+        transparent 70%
+    );
+}
+
+[data-theme="light"] .hero > .stack > :first-child {
+    background: linear-gradient(
+        135deg,
+        var(--sl-color-black) 20%,
+        var(--tileorm-accent-dark) 80%
+    );
+    background-clip: text;
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+}
+
+[data-theme="light"] .hero::before {
+    background: radial-gradient(
+        ellipse 60% 45% at 50% 0%,
+        color-mix(in srgb, var(--tileorm-accent-dark) 14%, transparent),
+        transparent 70%
+    );
+}
+
+/*
+ * Hero call-to-action: swap the flat default pill for a branded gradient one.
+ * The gradient is painted on a separate ::before layer, hard-clipped with
+ * overflow: hidden, rather than as the anchor's own background — a
+ * background: linear-gradient() directly on a rounded flex element renders
+ * with a visible seam in Chromium (position tracks the gradient angle).
+ */
+.hero .sl-link-button.primary {
+    position: relative;
+    isolation: isolate;
+    overflow: hidden;
+    border-radius: 0.5rem;
+    border-color: transparent;
+    color: var(--sl-color-black);
+}
+
+.hero .sl-link-button.primary::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    background: linear-gradient(
+        135deg,
+        var(--tileorm-accent),
+        var(--tileorm-accent-dark)
+    );
+    transition: filter 0.2s ease;
+}
+
+.hero .sl-link-button.primary:hover::before {
+    filter: brightness(1.08);
+}
+
+/* Inline code: the default Starlight style has square corners. */
+.sl-markdown-content code:not(:where(.not-content *)):not(pre code) {
+    border-radius: 0.25rem;
+}
