@@ -334,7 +334,7 @@ class Model(BaseModel):
 
         try:
             result = await query.asObject()
-        except Tile38KeyNotFoundError:
+        except (Tile38KeyNotFoundError, Tile38IdNotFoundError):
             raise exceptions.NotFoundError(name=cls.__name__, key=key, id=id_str)
 
         return cls.from_pyle(result, id_override=id_str, **groups)

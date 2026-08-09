@@ -47,6 +47,38 @@ def test_multiple_identifiers_not_allowed():
         )
 
 
+def test_must_have_location():
+    class Truck(Model):
+        id: int = Identifier()
+        group: str = Group()
+        field: str = CharField()
+
+    with pytest.raises(exceptions.NoLocation, match="Truck"):
+        Truck(
+            id=1,
+            group="foo",
+            field="bar",
+        )
+
+
+def test_multiple_locations_not_allowed():
+    class Truck(Model):
+        id: int = Identifier()
+        group: str = Group()
+        location: tuple[float, float] = PointField()
+        location2: tuple[float, float] = PointField()
+        field: str = CharField()
+
+    with pytest.raises(exceptions.MultipleLocations, match="Truck"):
+        Truck(
+            id=1,
+            group="foo",
+            location=(0.0, 0.0),
+            location2=(0.0, 0.0),
+            field="bar",
+        )
+
+
 @pytest.mark.asyncio
 async def test_create(tile38: Tile38):
     class Truck(Model):
@@ -270,6 +302,25 @@ async def test_get_not_found(tile38: Tile38):
         await Truck.get(1, group="foo")
 
 
+@pytest.mark.asyncio
+@pytest.mark.parametrize("method", ["save", "delete", "_read_db"])
+async def test_requires_database_configured(method):
+    """save(), delete(), and _read_db raise RuntimeError when Meta.database is unset."""
+
+    class Truck(Model):
+        id: int = Identifier()
+        group: str = Group()
+        location: Point = PointField()
+
+    truck = Truck(id=1, group="foo", location=(0.0, 0.0))
+
+    with pytest.raises(RuntimeError, match="Model.Meta.database must be set"):
+        attr = getattr(truck, method)
+
+        if callable(attr):
+            await attr()
+
+
 @pytest_asyncio.fixture
 async def TruckModel(tile38: Tile38):
     """Fixture that provides a Truck model class with database configured."""
@@ -481,6 +532,24 @@ async def test_nearby_edge_cases(TruckModel, tile38: Tile38):
     truck_ids = {truck.id for truck in results}
     assert truck_ids == {1}
     assert not any(t.group == "fleet7" for t in results)  # fleet7 truck not in fleet8
+
+
+@pytest.mark.asyncio
+async def test_nearby_str_target_id_not_found_in_existing_key(TruckModel):
+    """nearby() with a str id that doesn't exist within an existing key returns no results.
+
+    This should behave the same as a wholly missing key: no matching reference
+    object means an empty iterator, not an exception.
+    """
+    await TruckModel.create(id=1, group="existing-key", location=Point(0.0, 0.0))
+
+    results = []
+    async for truck in TruckModel.nearby(
+        "missing-id", radius=1000.0, group="existing-key"
+    ):
+        results.append(truck)
+
+    assert results == []
 
 
 @pytest.mark.asyncio
