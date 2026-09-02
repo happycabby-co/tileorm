@@ -4,6 +4,9 @@ on:
   push:
     branches: [main]
     paths: ['docs/**']
+  pull_request:
+    branches: [main]
+    paths: ['docs/**']
   workflow_dispatch:
 
 permissions:
@@ -34,6 +37,7 @@ jobs:
 
   deploy:
     needs: build
+    if: github.event_name != 'pull_request'
     runs-on: ubuntu-latest
     environment:
       name: github-pages
