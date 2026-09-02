@@ -13,6 +13,19 @@ export default defineConfig({
 				{ icon: 'github', label: 'GitHub', href: 'https://github.com/happycabby-co/tileorm' },
 			],
 			customCss: ['./src/styles/custom.css'],
+			head: [
+				{
+					tag: 'script',
+					attrs: {
+						'data-goatcounter': 'https://stats.tileorm.org/count',
+						async: true,
+						src: '//gc.zgo.at/count.js',
+					},
+				},
+			],
+			components: {
+				SiteTitle: './src/components/SiteTitle.astro',
+			},
 			sidebar: [
 				{
 					label: 'Start here',
